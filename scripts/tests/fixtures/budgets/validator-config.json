@@ -59,7 +59,7 @@
     "forbid_bom": true,
     "require_single_trailing_newline": true,
     "forbid_crlf": false,
-    "_crlf_note": "The committed blobs are CRLF (upstream state; core.autocrlf=true locally). Normalising them would edit SKILL.md and README.md, which this change may not touch, so the rule normalises CRLF for analysis instead of failing on it."
+    "_crlf_note": "The committed blobs are LF. core.autocrlf=true gives a Windows worktree CRLF, so the rule normalises CRLF for analysis instead of failing on it: forbidding it would be red on the maintainer's machine and green in CI."
   },
   "fixtures_dir": "scripts/tests/fixtures"
 }

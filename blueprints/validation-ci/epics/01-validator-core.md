@@ -122,7 +122,7 @@ regular expression belongs in it.** Do not edit it; read these keys out of it.
 | `zones` | the three zone names, in the order they must appear |
 | `counts` | per count kind: the `truth_file` and a `truth_kind` of `numbered_table_row` or `template_heading` |
 | `claim_scan_stop_markers` | per file: the heading at which claim scanning stops. `README.md` stops at its Version History heading, below which a historical "35 credit killing patterns" entry must never be reported |
-| `encoding` | `require_utf8`, `forbid_bom`, `require_single_trailing_newline`, and `forbid_crlf` which is **false** on purpose — every committed blob is CRLF and normalising them would edit a read-only file |
+| `encoding` | `require_utf8`, `forbid_bom`, `require_single_trailing_newline`, and `forbid_crlf` which is **false** on purpose — the blobs are LF, but `core.autocrlf` gives a Windows worktree CRLF |
 
 ## Data model touched here
 

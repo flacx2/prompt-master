@@ -10,6 +10,8 @@ paths:
 
 This repository is a fork of `nidhinjs/prompt-master`. These four files are kept byte-identical to
 upstream so that pulling from it never conflicts.
+The sole exception is the `**1.8.2**` Version History line in `README.md`: upstream bumped
+the version without one, and `version-sync` cannot pass any other way.
 
 - **Do not edit them.** Not to fix a count, not to normalise a line ending, not to trim trailing
   whitespace, not to rename a heading. The validator adapts to their content; it does not correct it.

@@ -22,7 +22,7 @@ paths:
   frontmatter keys live in `scripts/validator-config.json`. Regular expressions live in the code.
 - **Derive counts at run time.** Never cache the pattern or template count anywhere.
 - **Normalise before analysing.** Read bytes, decode UTF-8, replace CRLF with LF. The committed
-  blobs are CRLF and that is upstream's choice, not a defect to flag.
+  blobs are LF; `core.autocrlf` gives a Windows worktree CRLF, which is not a defect to flag.
 - **Every rule gets a negative fixture** in `scripts/tests/fixtures/<rule>/`, and `--self-test`
   asserts that fixture fails that rule and no other.
 - **No rule walks the tree.** A rule reads only the paths the config names. `exclude_dirs` is a

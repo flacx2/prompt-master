@@ -96,6 +96,8 @@ Deferred conventions — read the matching file before editing that area:
 
 1. Never edit `SKILL.md`, `README.md`, `LICENSE` or `references/**`. This fork tracks
    `nidhinjs/prompt-master`; those files stay byte-identical so upstream merges never conflict.
+   Sole exception: the `**1.8.2**` Version History line in `README.md`, because upstream
+   bumped the version without one and `version-sync` caught it.
 2. Never add a third-party Python package, a manifest or a lockfile.
 3. Never relax a rule to turn a gate green. Fix the drift, or fix the rule and re-prove it with a
    fixture.

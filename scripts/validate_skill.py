@@ -490,9 +490,9 @@ BOM = b"\xef\xbb\xbf"
 def rule_encoding(ctx):
     """Bytes-level hygiene, switched by the config's encoding object.
 
-    forbid_crlf is false on purpose. Every committed blob here is CRLF and
-    core.autocrlf is true locally; flagging it would demand a rewrite of four
-    read-only documents and guarantee a conflict on the next upstream merge.
+    forbid_crlf is false on purpose. The committed blobs are LF, but
+    core.autocrlf gives a Windows worktree CRLF, so forbidding it would be red
+    on the maintainer's machine and green in CI.
     """
     rules = ctx.config.get("encoding", {})
     findings = []

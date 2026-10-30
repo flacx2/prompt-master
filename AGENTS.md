@@ -24,6 +24,7 @@ any task is marked done.
 1. Never edit `SKILL.md`, `README.md`, `LICENSE` or anything under `references/`. This repository is
    a fork of `nidhinjs/prompt-master` and those files are kept byte-identical to upstream so merges
    never conflict. The validator adapts to their content; it does not correct it.
+   Sole exception: the `**1.8.2**` Version History line in `README.md`.
 2. Never add a third-party Python package. The validator is standard library only — no manifest, no
    lockfile, nothing to audit.
 3. Never widen a rule to make a failure go away. A red rule is either a real drift in the docs or a

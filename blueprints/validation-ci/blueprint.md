@@ -44,7 +44,7 @@ The Repo Map, read from the tree on 2026-10-21 and 2026-10-22:
 | CI | **None.** No `.github/` directory |
 | Agent instructions | **None.** No `CLAUDE.md`, no `AGENTS.md` |
 | Ignore file | **None.** No `.gitignore`, and `.claude-flow/` plus `.swarm/` sit untracked in the worktree |
-| Line endings | The committed blobs are CRLF — all 496 lines of `SKILL.md`, all 422 of `README.md`, all 82 of `references/patterns.md`, all 442 of `references/templates.md`. `core.autocrlf` is `true` locally |
+| Line endings | The committed blobs are LF. `core.autocrlf` is `true` locally, so the Windows worktree holds CRLF |
 | Interpreter on this machine | `python` resolves to 3.12.10. `python3` resolves to the Windows Store stub and must never appear in a command |
 
 The modules this change touches: none of them. It reads `SKILL.md`, `README.md`,
@@ -108,8 +108,8 @@ on new drift, never on day one.
 | Not building | Why not now | Revisit when |
 |---|---|---|
 | **Model-pin staleness checking** — flagging `Model Recency Gate` entries that have aged out | It is the churn that actually recurs (five "refresh routing" commits), but there is no `last-verified` marker in `SKILL.md` to read, and adding one edits a file this change may not touch | The fork stops tracking `nidhinjs/prompt-master`, or upstream adds a date marker of its own |
-| **Normalising CRLF to LF** | Every committed blob is CRLF; converting them rewrites all four documents and guarantees a conflict on the next upstream pull | The fork diverges on purpose, or upstream normalises first |
-| **Trailing-whitespace enforcement** | `README.md` has 21 lines with trailing whitespace today; a rule forbidding it would be red on day one and could only be fixed by editing upstream content | Same trigger as the row above |
+| **Forbidding CRLF** | The blobs are LF, but `core.autocrlf` gives a Windows worktree CRLF, so the rule would be red locally and green in CI | Never, while the repository is worked on from Windows |
+| **Trailing-whitespace enforcement** | `README.md` has 21 lines with trailing whitespace today; a rule forbidding it would be red on day one and could only be fixed by editing upstream content | The fork diverges on purpose, or upstream cleans it first |
 | **Auto-fixing a drifted count** — a `--fix` flag that rewrites the claim | Every claim string lives in `README.md`, `SKILL.md` or `references/patterns.md`. A fixer writes to the four read-only files by definition | The read-only constraint is lifted |
 | **A counts manifest the documents read from** | Would require editing the documents to point at it | Same trigger |
 | **Markdown linting in general** — heading hierarchy, table formatting, link style | Upstream's style is upstream's choice; a generic linter would report hundreds of findings on content nobody here may change | Never, while this is a tracked fork |
@@ -251,7 +251,7 @@ convention matrix records that explicitly rather than leaving it implied.
 |---|---|
 | Added by a step | `scripts/validate_skill.py`, `scripts/tests/fixtures/**`, `.github/workflows/validate.yml`, `.githooks/pre-commit` |
 | Added by the workspace copy | `CLAUDE.md`, `AGENTS.md`, `.gitignore`, `.claude/settings.json`, `.claude/rules/validator.md`, `.claude/rules/skill-docs.md`, `.claude/rules/ci.md`, `.claude/skills/add-validator-rule/SKILL.md`, `scripts/validator-config.json` |
-| Modified | **Nothing.** Zero existing files change |
+| Modified | `README.md` gains one Version History entry — decision 13. Nothing else |
 | Deleted | **Nothing** |
 
 ---
@@ -867,9 +867,8 @@ config's `encoding` object:
 - The file ends with exactly one newline — not zero, not two or more.
 
 `forbid_crlf` is **false** in the shipped config and the rule honours it: the committed blobs are
-CRLF, that is upstream's state, and flagging it would demand an edit to a read-only file. The rule
-normalises CRLF for analysis instead. The config comment records why, so the next person does not
-flip it without reading §1's Non-Goals.
+LF, but `core.autocrlf` gives a Windows worktree CRLF, so forbidding it would be red on the
+maintainer's machine and green in CI. The rule normalises CRLF for analysis instead.
 
 **Done when**
 
@@ -1800,17 +1799,18 @@ A check that can be tolerated becomes a check nobody reads.
 | # | Decision | Rejected alternative | Why | Would reverse if |
 |---|---|---|---|---|
 | 1 | Python 3, standard library only | Node with a small package set; Bash with `grep` and `awk` | Python is already on the machine and on every runner, and it keeps the repository manifest-free. Bash was rejected because the count and version assertions get unreadable fast and break differently on Windows than on the runner | The repository acquires a JavaScript toolchain for another reason, at which point one ecosystem beats two |
-| 2 | **New files only — no edit to `SKILL.md`, `README.md`, `LICENSE` or `references/`** | Normalising the documents and adding a counts manifest they read from | The maintainer was unsure whether this fork keeps tracking `nidhinjs/prompt-master`, so the cheaper assumption is the reversible one: new files never conflict on a merge. The validator therefore adapts to upstream's CRLF, trailing whitespace and historical claims rather than correcting them | The fork stops pulling from upstream. Then CRLF normalisation, trailing-whitespace enforcement, a counts manifest and a `--fix` flag all become available, and §1's Non-Goals table lists them with that trigger |
+| 2 | **New files only — no edit to `SKILL.md`, `README.md`, `LICENSE` or `references/`** | Normalising the documents and adding a counts manifest they read from | The maintainer was unsure whether this fork keeps tracking `nidhinjs/prompt-master`, so the cheaper assumption is the reversible one: new files never conflict on a merge. The validator therefore adapts to upstream's trailing whitespace and historical claims rather than correcting them | The fork stops pulling from upstream. Then CRLF normalisation, trailing-whitespace enforcement, a counts manifest and a `--fix` flag all become available, and §1's Non-Goals table lists them with that trigger |
 | 3 | CI blocks on `pull_request` and reports on `push` to `main` | Warn-only annotations until the noise level is known | The baseline was verified green rule by rule before this blueprint was written, so there is no noise to discover — a warn-only phase would only delay the first real catch | A rule turns out to fire on upstream content, which by decision 2 means the rule is wrong and gets fixed, not downgraded |
 | 4 | Ceilings in a config file, not the 450 lines the git history asks for | Enforcing 450 as written in `9d64012` | `SKILL.md` is 496 today. A 450 ceiling is red on day one and can only be satisfied by editing a read-only file, which decision 2 forbids. The ceilings are current size plus roughly five per cent, recorded next to the size they were derived from | The documents are compressed under 450 for their own reasons, at which point the ceilings follow them down |
 | 5 | Interpreter pinned to the 3.12 series in CI | 3.14, the newest supported release at the time of writing; 3.15, the newest release | Dev parity. The gate has to reproduce on the maintainer's machine, which runs 3.12.10, and a validator that is green locally and red in CI on an interpreter difference is worse than one release behind. 3.12 is in security-only maintenance until 2028-10-31, which is irrelevant to a standard-library script that opens no socket | The maintainer's local interpreter moves. Then both move together, and the code floor of 3.9 means nothing else has to change |
 | 6 | `counts` stops scanning `README.md` at its Version History heading | Scanning the whole file; or listing claim line numbers to ignore | The `1.1.0` entry says "35 credit killing patterns" and always will — it is a historical fact, not drift. A stop marker is one config line and survives new entries being added above it; a line-number allowlist would drift on every edit | Upstream restructures the readme so history is not a trailing section, at which point the marker moves or becomes a section-aware exclusion |
 | 7 | `version-sync` is a presence check, not an ordering check | Asserting the frontmatter version is the newest entry in Version History | Ordering means a regex over someone else's prose formatting — a gate that breaks on a wording change rather than on a real defect, on content decision 2 forbids fixing | The readme gains a machine-readable version block |
-| 8 | `encoding` tolerates CRLF | Forbidding CRLF, the usual default | Every committed blob is CRLF and `core.autocrlf` is `true` locally. Forbidding it is red on day one and fixable only by rewriting all four documents, which guarantees the next upstream merge conflicts | Decision 2 reverses |
+| 8 | `encoding` tolerates CRLF | Forbidding CRLF, the usual default | The blobs are LF, but `core.autocrlf` is `true` locally, so the worktree is CRLF. Forbidding it would be red locally and green in CI | The repository stops being worked on from Windows, or a `.gitattributes` pins LF in the worktree |
 | 9 | Fixtures are minimal four-document trees, each with its own optional config | One shared fixture tree with per-rule mutations applied at run time | A tree on disk is readable in a diff and needs no fixture framework. The optional per-fixture config is what lets `budgets` demonstrate a breach with a one-line ceiling instead of a committed 521-line file | The fixture set grows past the point where the duplication is worse than a generator — which, with seven small trees, it is not |
 | 10 | The hook is a convenience; CI is the gate | Relying on the hook alone; or a `pre-push` hook | A hook is bypassable with `--no-verify` and absent on a fresh clone until `core.hooksPath` is set once. CI is the only enforcement a maintainer cannot forget | Never: this is the standard reason hooks are not gates |
 | 11 | One file, `scripts/validate_skill.py`, rather than a package | `scripts/validator/` with a module per rule | Seven rules of a few lines each. A package would add `__init__.py`, an import convention and a resolution question (§19.6) that currently does not exist anywhere in this stack | The registry passes roughly fifteen rules, or a rule needs its own test file |
 | 12 | `compileall` plus `json.tool` as the lint/format gate | `ruff`, `black`, `flake8` | They are third-party, and there is one Python file for a formatter to have an opinion about. The gate answers the only question that matters — does it parse — with zero dependencies | A second or third Python file appears, or more than one person edits the validator |
+| 13 | Add the missing `**1.8.2**` entry to `README.md`, and raise the `references/templates.md` ceiling from 470 to 510 | Weakening `version-sync`, or leaving the check red | Upstream bumped `SKILL.md` to 1.8.2 with no readme entry, which is real drift and the first thing the rule ever caught. Weakening the rule would discard that catch. This is the one exception to decision 2 and can conflict on the next upstream edit of that section. Template N took the file to 483 lines; 510 keeps the same roughly five per cent headroom | Upstream adds its own 1.8.2 entry: take theirs and drop this line |
 
 ### 20.4 What to build next
 

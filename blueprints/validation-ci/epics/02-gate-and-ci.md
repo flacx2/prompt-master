@@ -130,7 +130,7 @@ regular expression belongs in it.** Do not edit it; read these keys out of it.
 | `zones` | the three zone names, in the order they must appear |
 | `counts` | per count kind: the `truth_file` and a `truth_kind` of `numbered_table_row` or `template_heading` |
 | `claim_scan_stop_markers` | per file: the heading at which claim scanning stops. `README.md` stops at its Version History heading, below which a historical "35 credit killing patterns" entry must never be reported |
-| `encoding` | `require_utf8`, `forbid_bom`, `require_single_trailing_newline`, and `forbid_crlf` which is **false** on purpose — every committed blob is CRLF and normalising them would edit a read-only file |
+| `encoding` | `require_utf8`, `forbid_bom`, `require_single_trailing_newline`, and `forbid_crlf` which is **false** on purpose — the blobs are LF, but `core.autocrlf` gives a Windows worktree CRLF |
 
 ## Data model touched here
 
@@ -200,11 +200,10 @@ Three assertions, each switched by the config's `encoding` object: the bytes dec
 offset when they do not), there is no byte-order mark, and the file ends with exactly one newline —
 not zero, not two.
 
-**`forbid_crlf` is false and the rule must honour it.** Every committed blob in this repository is
-CRLF and `core.autocrlf` is `true` locally; flagging that would demand a rewrite of all four
-read-only documents and guarantee a conflict on the next upstream merge. The rule normalises CRLF for
-analysis and says nothing about it. The config carries a comment explaining why, so do not flip the
-flag without reading the blueprint's Non-Goals.
+**`forbid_crlf` is false and the rule must honour it.** The committed blobs are LF, but
+`core.autocrlf` is `true` locally, so the Windows worktree is CRLF. Forbidding it would be red
+on the maintainer's machine and green in CI. The rule normalises CRLF for analysis and says
+nothing about it.
 
 This task closes the registry at seven rules, and its gate asserts that count.
 
@@ -628,8 +627,8 @@ waits on a human or an external service.
 
 ## Pitfalls
 
-- **Normalising CRLF.** Every committed blob is CRLF. `forbid_crlf` is false on purpose; flipping it
-  makes the gate red on day one and fixable only by rewriting the four read-only documents.
+- **Forbidding CRLF.** The blobs are LF, but a Windows worktree is CRLF under `core.autocrlf`.
+  `forbid_crlf` is false on purpose; flipping it turns the gate red locally and green in CI.
 - **A fixture that trips more than its own rule.** `--self-test` fails on exactly this, and it is
   easy to cause by forgetting a zone heading or a bold version in a fixture's documents. Give every
   fixture a complete, valid set and break one thing.
