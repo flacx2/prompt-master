@@ -328,10 +328,67 @@ def rule_counts(ctx):
     return findings
 
 
+def heading_lines(text, prefix):
+    """1-based line numbers of every level-two heading opening with this prefix.
+
+    A prefix match, not equality: the real headings carry a descriptive suffix,
+    as in '## PRIMACY ZONE - Identity, Hard Rules, Output Lock'.
+    """
+    return [i + 1 for i, line in enumerate(text.splitlines()) if line.startswith(prefix)]
+
+
+def rule_zones(ctx):
+    """The three zones appear once each, in order. The order is the mechanism."""
+    rel = ctx.config.get("skill_file")
+    entry = ctx.files[rel]
+    if entry.text is None:
+        return []
+    zones = ctx.config.get("zones", [])
+
+    findings = []
+    positions = []
+    for zone in zones:
+        hits = heading_lines(entry.text, "## " + zone)
+        if not hits:
+            findings.append(
+                Finding(
+                    rule="zones",
+                    path=rel,
+                    line=None,
+                    message="zone heading '## %s' is missing" % zone,
+                )
+            )
+            continue
+        for duplicate in hits[1:]:
+            findings.append(
+                Finding(
+                    rule="zones",
+                    path=rel,
+                    line=duplicate,
+                    message="zone heading '## %s' appears more than once" % zone,
+                )
+            )
+        positions.append((zone, hits[0]))
+
+    for (first, first_line), (second, second_line) in zip(positions, positions[1:]):
+        if first_line > second_line:
+            findings.append(
+                Finding(
+                    rule="zones",
+                    path=rel,
+                    line=second_line,
+                    message="zone %r appears before %r; the configured order is the reverse"
+                    % (second, first),
+                )
+            )
+    return findings
+
+
 RULES = {
     "budgets": rule_budgets,
     "frontmatter": rule_frontmatter,
     "counts": rule_counts,
+    "zones": rule_zones,
 }
 
 
