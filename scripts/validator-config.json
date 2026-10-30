@@ -1,0 +1,66 @@
+{
+  "_note": "Configuration for scripts/validate_skill.py. Shipped by the blueprint bundle, not written by a build step. Every files.max_lines value is a ceiling; every counted_at_authoring value was counted from the file on 2026-10-30.",
+  "files": {
+    "SKILL.md": {
+      "max_lines": 520,
+      "counted_at_authoring": 499
+    },
+    "README.md": {
+      "max_lines": 450,
+      "counted_at_authoring": 424
+    },
+    "references/patterns.md": {
+      "max_lines": 110,
+      "counted_at_authoring": 82
+    },
+    "references/templates.md": {
+      "max_lines": 510,
+      "counted_at_authoring": 483
+    }
+  },
+  "exclude_dirs": [
+    "blueprints",
+    ".git",
+    ".github",
+    ".claude",
+    ".claude-flow",
+    ".swarm",
+    "__pycache__"
+  ],
+  "_exclude_dirs_note": "Directories that are never a valid validation target. The guard exits 2 rather than read a --config, a configured document path or a --root resolving inside one of these. The fixture directory is NOT here: it is not read by a normal run because no rule walks the tree, and it is reachable on purpose through --root and --self-test.",
+  "fixtures_dir": "scripts/tests/fixtures",
+  "skill_file": "SKILL.md",
+  "readme_file": "README.md",
+  "required_frontmatter_keys": [
+    "name",
+    "version",
+    "description"
+  ],
+  "expected_name": "prompt-master",
+  "_expected_name_note": "The frontmatter name is compared against this value, not against the directory name, so a fixture tree under scripts/tests/fixtures/<rule>/ does not fail the frontmatter rule merely for living in a differently named directory.",
+  "zones": [
+    "PRIMACY ZONE",
+    "MIDDLE ZONE",
+    "RECENCY ZONE"
+  ],
+  "counts": {
+    "patterns": {
+      "truth_file": "references/patterns.md",
+      "truth_kind": "numbered_table_row"
+    },
+    "templates": {
+      "truth_file": "references/templates.md",
+      "truth_kind": "template_heading"
+    }
+  },
+  "claim_scan_stop_markers": {
+    "README.md": "## ℹ️ Version History"
+  },
+  "encoding": {
+    "require_utf8": true,
+    "forbid_bom": true,
+    "require_single_trailing_newline": true,
+    "forbid_crlf": false,
+    "_crlf_note": "The committed blobs are LF. core.autocrlf=true gives a Windows worktree CRLF, so the rule normalises CRLF for analysis instead of failing on it: forbidding it would be red on the maintainer's machine and green in CI."
+  }
+}

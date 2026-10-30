@@ -1,0 +1,47 @@
+name: validate
+
+# The pull-request run is the blocking one. The push run on main reports after
+# the fact by construction, which is deliberate: drift that arrives through an
+# upstream merge is still worth a red check even though nothing can block it.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# This job reads the repository and reports a status. It never writes.
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # 3.12 matches the interpreter the maintainer runs locally. A gate that is
+      # green locally and red in CI on an interpreter difference is worse than
+      # being one release behind; the code's own floor is 3.9.
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      # Nothing is installed: the validator imports only the standard library,
+      # and there is no manifest to install from.
+      - name: Byte-compile the validator
+        run: python -m compileall -q scripts
+
+      - name: Check the config parses
+        run: python -m json.tool scripts/validator-config.json
+
+      - name: Prove every rule can still fail
+        run: python scripts/validate_skill.py --self-test
+
+      # Last, so a finding lands on the diff as an annotation rather than in the
+      # log tail.
+      - name: Validate the skill
+        run: python scripts/validate_skill.py --format github

@@ -398,6 +398,7 @@ This is the single biggest fix for long sessions. Most wasted re-prompts come fr
 
 ## ℹ️ Version History
 
+- **1.8.2** — Model-routing refresh. Added GPT-6 Luna, GPT-6.1 Sol, and GPT-6 Astra routing and Template N for complex OpenAI tasks. Moved Claude, Gemini, and OpenAI reasoning model headings to family-level references.
 - **1.8.0** — Current-model refresh. Added Claude Fable 5, Opus 5, Sonnet 5, GPT-5.6 Sol/Terra/Luna, Codex, and Grok 4.6 routing. Replaced hidden chain-of-thought requests with auditable reasoning and generalized the Claude task brief for current adaptive-thinking models.
 - **1.7.0** — Opus 4.8 compatibility. Made Claude 4.x routing version-aware: durable advice generalized across 4.6/4.7/4.8, added Opus 4.8 (current default) profile, kept Opus 4.7 labeled. De-hardcoded the effort-level note (now harness-managed). Template M and pattern 36 cover 4.7 and 4.8. Fixed a stray fragment in patterns.md.
 - **1.6.0** — Opus 4.7 update. Added Template M (Opus 4.7 Task Brief). Updated Claude and Claude Code routing for literalism, adaptive thinking, xhigh effort, and session hygiene. Added patterns 36–37.

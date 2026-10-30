@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python scripts/validate_skill.py:*)",
+      "Bash(python -m compileall:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(python --version)",
+      "Bash(sh .githooks/pre-commit)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git tag:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git config core.hooksPath:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(test:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(wc:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Bash(git push:*)",
+      "Bash(git reset --hard origin/*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}
