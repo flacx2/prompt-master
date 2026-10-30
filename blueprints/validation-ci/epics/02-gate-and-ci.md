@@ -269,8 +269,9 @@ matching its own frontmatter. A fixture that trips three rules proves nothing ab
   historical claim also differs. One fixture, both halves of the rule: the first claim must be
   reported and the second must not, which is why this task's gate expects exactly one finding.
 
-`scripts/tests/fixtures` is already in `exclude_dirs`, so none of this is reachable from a plain run —
-and this task's gate re-runs the plain validation to prove the exclusion holds.
+Nothing walks the tree, so none of this is reachable from a plain run — and the fixture directory is
+named by `fixtures_dir` rather than `exclude_dirs` precisely so `--root` can still point at it. A
+live build proved the alternative: with the fixtures inside `exclude_dirs`, every gate below exits 2.
 
 **Files**
 
@@ -288,7 +289,7 @@ command below, on this machine, during the build.
 2. WHEN it runs the `zones` rule against that same fixture THE SYSTEM SHALL report zero findings and exit 0, proving the fixture isolates one rule.
 3. WHEN it runs the `frontmatter` rule against the frontmatter fixture THE SYSTEM SHALL report at least one finding and exit 1.
 4. WHEN it runs the `counts` rule against the counts fixture THE SYSTEM SHALL report exactly one finding — the claim above the stop marker, not the historical one below it — and exit 1.
-5. WHEN a plain full run of the repository runs after the fixtures are added THE SYSTEM SHALL still exit 0, because `scripts/tests/fixtures` is listed in `exclude_dirs`.
+5. WHEN a plain full run of the repository runs after the fixtures are added THE SYSTEM SHALL still exit 0, because no rule reads anything the config does not name — and the fixture directory is named by `fixtures_dir` rather than `exclude_dirs`, so `--root` can still reach it.
 
 **Verify** — every command, in order, run from the repository root. Each exits 0 when this task
 is correct; the last one exiting 0 is what makes the task done. Exit-code wrapping is part of the
@@ -326,7 +327,7 @@ Four more fixtures on the pattern E2-T2 established — `zones/` with two zone h
 version absent from its readme, `encoding/` with a document ending in two newlines — and then
 `--self-test`, which is what turns seven rules into seven rules that can be trusted.
 
-`--self-test` enumerates the directories under `scripts/tests/fixtures/`, skipping anything named in
+`--self-test` enumerates the directories under `scripts/tests/fixtures/`, skipping any directory named in
 `exclude_dirs` so a stray `__pycache__` is never taken for a fixture, and for each one runs **every** registered rule
 with that directory as the root, using a fixture-local `validator-config.json` when one is present and
 the repository's otherwise. It asserts two things per fixture: the rule of the same name reports at

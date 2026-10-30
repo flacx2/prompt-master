@@ -208,7 +208,7 @@
       "WHEN it runs the `zones` rule against that same fixture THE SYSTEM SHALL report zero findings and exit 0, proving the fixture isolates one rule.",
       "WHEN it runs the `frontmatter` rule against the frontmatter fixture THE SYSTEM SHALL report at least one finding and exit 1.",
       "WHEN it runs the `counts` rule against the counts fixture THE SYSTEM SHALL report exactly one finding — the claim above the stop marker, not the historical one below it — and exit 1.",
-      "WHEN a plain full run of the repository runs after the fixtures are added THE SYSTEM SHALL still exit 0, because `scripts/tests/fixtures` is listed in `exclude_dirs`."
+      "WHEN a plain full run of the repository runs after the fixtures are added THE SYSTEM SHALL still exit 0, because no rule reads anything the config does not name — and the fixture directory is named by `fixtures_dir` rather than `exclude_dirs`, so `--root` can still reach it."
     ],
     "verify": [
       "python scripts/validate_skill.py --root scripts/tests/fixtures/budgets --config scripts/tests/fixtures/budgets/validator-config.json --rule budgets; test $? -eq 1",

@@ -27,5 +27,6 @@ paths:
   asserts that fixture fails that rule and no other.
 - **No rule walks the tree.** A rule reads only the paths the config names. `exclude_dirs` is a
   guard: the validator exits 2 rather than read a configured path, a `--root` or a fixture directory
-  resolving inside it, which is what keeps it out of `blueprints/` and out of the fixtures. Only
-  `--self-test` reaches `scripts/tests/fixtures/`.
+  resolving inside it, which is what keeps it out of `blueprints/`. The fixture directory is named by
+  `fixtures_dir` and is deliberately **not** an `exclude_dirs` entry: guarding it would make every
+  fixture gate unsatisfiable. Only `--root` and `--self-test` reach it.

@@ -25,9 +25,10 @@
     ".claude",
     ".claude-flow",
     ".swarm",
-    "scripts/tests/fixtures",
     "__pycache__"
   ],
+  "_exclude_dirs_note": "Directories that are never a valid validation target. The guard exits 2 rather than read a --config, a configured document path or a --root resolving inside one of these. The fixture directory is NOT here: it is not read by a normal run because no rule walks the tree, and it is reachable on purpose through --root and --self-test.",
+  "fixtures_dir": "scripts/tests/fixtures",
   "skill_file": "SKILL.md",
   "readme_file": "README.md",
   "required_frontmatter_keys": [

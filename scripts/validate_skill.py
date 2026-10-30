@@ -608,7 +608,86 @@ def build_parser():
     )
     parser.add_argument("--rule", metavar="NAME", help="run exactly one rule")
     parser.add_argument("--config", metavar="PATH", help="use a different config file")
+    parser.add_argument("--root", metavar="DIR", help="validate a different tree")
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="prove every rule still fails on its own fixture and no other",
+    )
     return parser
+
+
+DEFAULT_FIXTURE_DIR = "scripts/tests/fixtures"
+
+
+def fixture_dir(config):
+    """Where the fixtures live. Deliberately not an exclude_dirs entry: nothing
+    walks the tree, so it is unreachable by accident and reachable on purpose."""
+    return config.get("fixtures_dir", DEFAULT_FIXTURE_DIR)
+
+
+def fixture_dirs(root, config):
+    """Fixture directories, skipping anything exclude_dirs names (a stray __pycache__)."""
+    base = os.path.join(root, fixture_dir(config))
+    if not os.path.isdir(base):
+        return []
+    excluded = set(e.strip("/").rsplit("/", 1)[-1] for e in config.get("exclude_dirs", []))
+    out = []
+    for name in sorted(os.listdir(base)):
+        full = os.path.join(base, name)
+        if os.path.isdir(full) and name not in excluded:
+            out.append((name, full))
+    return out
+
+
+def run_rules(root, config, names):
+    ctx = build_context(root, config)
+    by_rule = {}
+    for name in names:
+        by_rule[name] = RULES[name](ctx)
+    return by_rule
+
+
+def self_test(root, repo_config):
+    """Every fixture fails the rule it is named after, and no other.
+
+    A registered rule with no fixture directory fails this too: a rule nobody
+    has seen fail is not a gate.
+    """
+    fixtures = fixture_dirs(root, repo_config)
+    found = dict(fixtures)
+    failures = []
+
+    for rule in RULES:
+        if rule not in found:
+            failures.append("rule %r has no fixture directory under %s" % (rule, fixture_dir(repo_config)))
+
+    for name, path in fixtures:
+        if name not in RULES:
+            failures.append("fixture %r matches no registered rule" % name)
+            continue
+        local = os.path.join(path, "validator-config.json")
+        config = load_config(local) if os.path.isfile(local) else repo_config
+        by_rule = run_rules(path, config, list(RULES))
+        if not by_rule[name]:
+            failures.append("fixture %r no longer fails rule %r" % (name, name))
+        unexpected = sorted(r for r, f in by_rule.items() if f and r != name)
+        if unexpected:
+            failures.append(
+                "fixture %r also fails %s" % (name, ", ".join(repr(r) for r in unexpected))
+            )
+        if not by_rule[name] or unexpected:
+            print("fixture %-13s FAIL" % name)
+        else:
+            print("fixture %-13s fails %s only - ok" % (name, name))
+
+    if failures:
+        for line in failures:
+            print("self-test: " + line)
+        print("%d self-test failure(s)" % len(failures))
+        return 1
+    print("self-test: %d fixture(s), each failing its own rule only" % len(fixtures))
+    return 0
 
 
 def main(argv=None):
@@ -627,6 +706,16 @@ def main(argv=None):
     config_path = args.config or os.path.join(root, "scripts", "validator-config.json")
     config = load_config(config_path)
     assert_not_excluded(root, os.path.abspath(config_path), config, "config")
+
+    if args.self_test:
+        return self_test(root, config)
+
+    if args.root:
+        target = os.path.abspath(args.root)
+        if not os.path.isdir(target):
+            die("root: %s is not a directory" % args.root)
+        assert_not_excluded(root, target, config, "root")
+        root = target
 
     if args.rule is not None and args.rule not in RULES:
         sys.stderr.write("rule: %r is not registered. Registered rules:\n" % args.rule)

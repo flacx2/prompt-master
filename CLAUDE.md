@@ -45,7 +45,7 @@ config.
 |---|---|---|
 | `scripts/validate_skill.py` | read any committed file, print findings, exit 0/1/2 | write to any file, import a third-party package, shell out |
 | `scripts/validator-config.json` | hold data — ceilings, paths, zone names, exclusions | hold a regular expression or any other executable logic |
-| `scripts/tests/fixtures/**` | contain deliberately broken copies | be read by a normal run — it is in `exclude_dirs`, and only `--self-test` reaches it |
+| `scripts/tests/fixtures/**` | contain deliberately broken copies, reached through `--root` and `--self-test` | be read by a normal run — nothing walks the tree. It is named by `fixtures_dir`, never by `exclude_dirs` |
 | `.github/workflows/**` | run the gate, read the repository | get a permission wider than `contents: read`, or a float action tag |
 | `SKILL.md`, `README.md`, `references/**`, `LICENSE` | be read | **be edited by anything in this repository's own tooling** |
 

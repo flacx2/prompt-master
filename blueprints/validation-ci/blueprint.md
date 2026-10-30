@@ -223,9 +223,11 @@ prompt-master/
 - `scripts/validator-config.json` holds data only — no regular expression, no glob that encodes
   behaviour. Regexes live in `validate_skill.py`.
 - `scripts/tests/fixtures/` is never read by a normal run. No rule walks the tree at all — the file
-  set is exactly what the config names — and `exclude_dirs` is enforced as a guard that refuses a
-  configured path or a `--root` resolving inside it, which is what keeps the validator out of both
-  the fixtures and `blueprints/`.
+  set is exactly what the config names — so the fixtures are unreachable by accident. They are named
+  by `fixtures_dir` and reached on purpose through `--root` and `--self-test`, and they are
+  deliberately **not** an `exclude_dirs` entry: `exclude_dirs` is a guard that refuses a `--config`,
+  a configured document path or a `--root` resolving inside it, so listing the fixtures there would
+  make every fixture gate in §9 steps 8 and 9 exit 2 instead of passing.
 - The validator imports only from the standard library.
 
 This blueprint states **no import, include or link convention** for its own source: there is exactly
@@ -555,7 +557,10 @@ Create `scripts/validate_skill.py`, standard library only, with:
   `--config` path included, because the bundle's `workspace/` carries its own copy of the config and
   that copy is the most likely thing anyone points at by accident. `exclude_dirs` already lists
   `blueprints`, `.git`,
-  `.github`, `.claude`, `.claude-flow`, `.swarm`, `scripts/tests/fixtures` and `__pycache__`. The
+  `.github`, `.claude`, `.claude-flow`, `.swarm` and `__pycache__`. **The fixture directory is not in
+  that list** — it is named separately by `fixtures_dir`, because nothing walks the tree (so it is
+  unreachable by accident) and `--root` plus `--self-test` reach it on purpose. Guarding it would
+  make every fixture gate in steps 8 and 9 unsatisfiable. The
   bundle sits inside the repository it validates and its `workspace/` holds a differently-tuned copy
   of the config, so pointing the validator into the bundle is a mistake worth refusing out loud
   rather than a tree to filter quietly — see §19.6. `--self-test` applies the same list when it
@@ -901,8 +906,9 @@ three fixture trees, each a minimal four-document tree that breaks exactly one r
 
 Every fixture's skill file carries the configured expected name, the three zones in order, resolvable
 reference paths and a bold version matching its own frontmatter, so that the rules it is not testing
-stay silent. `scripts/tests/fixtures` is already in `exclude_dirs` and no rule walks the tree, so
-none of this is reachable from a normal run.
+stay silent. `fixtures_dir` is where they live and no rule walks the tree, so none of this is
+reachable from a normal run — and because the fixture directory is deliberately *not* an
+`exclude_dirs` entry, `--root` can still point at it, which is what makes these gates satisfiable.
 
 **Done when**
 
@@ -1355,7 +1361,7 @@ input" but "does it still fail on bad input".
 ### Test data
 
 The fixture trees are the test data, authored by steps 8 and 9, committed, and excluded from every
-normal run by `exclude_dirs`. Each is a minimal four-document tree plus, where the rule needs
+normal run because nothing walks the tree. Each is a minimal four-document tree plus, where the rule needs
 different tuning, its own `validator-config.json` — which is how the `budgets` fixture demonstrates a
 ceiling breach with a one-line ceiling instead of a 521-line document. No test shares mutable state
 with another, because no test writes anything at all.
@@ -1578,7 +1584,7 @@ Two files a `Verify` command needs that no §9 step authors, both emitted as rea
 
 | File | Path in the project | Which `Verify` commands need it | Resolution/env handling it carries | Bundle-path exclusion |
 |---|---|---|---|---|
-| `validator-config.json` | `scripts/validator-config.json` | Every validator invocation in steps 1 through 12, and §20.1 | none needed: every import in the validator is standard library and resolves plainly, and the tool reads no environment variable. The file is pure data — ceilings, paths, zone names, required keys, the expected skill name, the claim stop markers and `exclude_dirs` | `exclude_dirs` contains the literal `blueprints`, and the validator exits 2 rather than read a `--config`, a configured document path, a `--root` or a fixture directory resolving inside it — the `--config` path included, which is what keeps it out of the bundle's own copy of this file |
+| `validator-config.json` | `scripts/validator-config.json` | Every validator invocation in steps 1 through 12, and §20.1 | none needed: every import in the validator is standard library and resolves plainly, and the tool reads no environment variable. The file is pure data — ceilings, paths, zone names, required keys, the expected skill name, the claim stop markers, `exclude_dirs` and `fixtures_dir` | `exclude_dirs` contains the literal `blueprints`, and the validator exits 2 rather than read a `--config`, a configured document path, a `--root` or a fixture directory resolving inside it — the `--config` path included, which is what keeps it out of the bundle's own copy of this file |
 | `.gitignore` | `.gitignore` | Step 12's `git ls-files --error-unmatch` run, and §20.1's tracked-file and not-ignored gates | NOT APPLICABLE — git reads it directly | `blueprints/` deliberately does **not** appear: the bundle is committed on purpose (§10, *Files that must be committed*), and the validator excludes it through `exclude_dirs` rather than through the ignore file |
 
 No test-runner config, no e2e-runner config, no path-alias config and no test setup file exist,
