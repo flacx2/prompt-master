@@ -19,13 +19,13 @@
       "python scripts/validate_skill.py --list-rules | grep -qx budgets",
       "python scripts/validate_skill.py",
       "python scripts/validate_skill.py --rule budgets",
-      "python scripts/validate_skill.py --not-a-flag; test $? -eq 2",
-      "python scripts/validate_skill.py --rule no-such-rule; test $? -eq 2",
-      "python scripts/validate_skill.py --config scripts/nope.json; test $? -eq 2",
+      "rc=0; python scripts/validate_skill.py --not-a-flag || rc=$?; test \"$rc\" -eq 2",
+      "rc=0; python scripts/validate_skill.py --rule no-such-rule || rc=$?; test \"$rc\" -eq 2",
+      "rc=0; python scripts/validate_skill.py --config scripts/nope.json || rc=$?; test \"$rc\" -eq 2",
       "python -m compileall -q scripts",
-      "grep -rn \"^import \\|^from \" scripts/validate_skill.py | grep -vE \"argparse|json|os|re|sys|pathlib|typing|dataclasses|collections\"; test $? -eq 1",
+      "rc=0; grep -rn \"^import \\|^from \" scripts/validate_skill.py | grep -vE \"argparse|json|os|re|sys|pathlib|typing|dataclasses|collections\" || rc=$?; test \"$rc\" -eq 1",
       "test -f scripts/validator-config.json",
-      "python scripts/validate_skill.py --config blueprints/validation-ci/workspace/scripts/validator-config.json; test $? -eq 2"
+      "rc=0; python scripts/validate_skill.py --config blueprints/validation-ci/workspace/scripts/validator-config.json || rc=$?; test \"$rc\" -eq 2"
     ],
     "checkpoint": "step-01-harness",
     "files": [
@@ -211,11 +211,11 @@
       "WHEN a plain full run of the repository runs after the fixtures are added THE SYSTEM SHALL still exit 0, because no rule reads anything the config does not name — and the fixture directory is named by `fixtures_dir` rather than `exclude_dirs`, so `--root` can still reach it."
     ],
     "verify": [
-      "python scripts/validate_skill.py --root scripts/tests/fixtures/budgets --config scripts/tests/fixtures/budgets/validator-config.json --rule budgets; test $? -eq 1",
+      "rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/budgets --config scripts/tests/fixtures/budgets/validator-config.json --rule budgets || rc=$?; test \"$rc\" -eq 1",
       "python scripts/validate_skill.py --root scripts/tests/fixtures/budgets --rule zones",
-      "python scripts/validate_skill.py --root scripts/tests/fixtures/frontmatter --rule frontmatter; test $? -eq 1",
+      "rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/frontmatter --rule frontmatter || rc=$?; test \"$rc\" -eq 1",
       "python scripts/validate_skill.py --root scripts/tests/fixtures/frontmatter --rule counts",
-      "python scripts/validate_skill.py --root scripts/tests/fixtures/counts --rule counts; test $? -eq 1",
+      "rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/counts --rule counts || rc=$?; test \"$rc\" -eq 1",
       "python scripts/validate_skill.py --root scripts/tests/fixtures/counts --rule zones",
       "python scripts/validate_skill.py",
       "python -m compileall -q scripts"
@@ -250,10 +250,10 @@
     ],
     "verify": [
       "python scripts/validate_skill.py --self-test",
-      "python scripts/validate_skill.py --root scripts/tests/fixtures/zones --rule zones; test $? -eq 1",
-      "python scripts/validate_skill.py --root scripts/tests/fixtures/links --rule links; test $? -eq 1",
-      "python scripts/validate_skill.py --root scripts/tests/fixtures/version-sync --rule version-sync; test $? -eq 1",
-      "python scripts/validate_skill.py --root scripts/tests/fixtures/encoding --rule encoding; test $? -eq 1",
+      "rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/zones --rule zones || rc=$?; test \"$rc\" -eq 1",
+      "rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/links --rule links || rc=$?; test \"$rc\" -eq 1",
+      "rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/version-sync --rule version-sync || rc=$?; test \"$rc\" -eq 1",
+      "rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/encoding --rule encoding || rc=$?; test \"$rc\" -eq 1",
       "python scripts/validate_skill.py",
       "python -m compileall -q scripts"
     ],
@@ -286,11 +286,11 @@
     "verify": [
       "python scripts/validate_skill.py --format json | python -m json.tool > /dev/null",
       "python scripts/validate_skill.py --format json | grep -q '\"exit_code\": 0'",
-      "python scripts/validate_skill.py --format json | grep -q '\"findings\": \\[\\]'",
+      "python scripts/validate_skill.py --format json | grep -qF '\"findings\": []'",
       "python scripts/validate_skill.py --format json | grep -q '\"tool\": \"validate_skill\"'",
-      "python scripts/validate_skill.py --format json --rule counts | grep -q '\"rules_run\": \\[\"counts\"\\]'",
+      "python scripts/validate_skill.py --format json --rule counts | tr -d '[:space:]' | grep -qF '\"rules_run\":[\"counts\"]'",
       "python scripts/validate_skill.py --root scripts/tests/fixtures/zones --rule zones --format github | grep -q '^::error file='",
-      "python scripts/validate_skill.py --format nope; test $? -eq 2",
+      "rc=0; python scripts/validate_skill.py --format nope || rc=$?; test \"$rc\" -eq 2",
       "python scripts/validate_skill.py --self-test",
       "python -m compileall -q scripts"
     ],
@@ -324,8 +324,8 @@
       "grep -qE '^ *python-version: \"3.12\"' .github/workflows/validate.yml",
       "grep -q \"validate_skill.py --self-test\" .github/workflows/validate.yml",
       "grep -q \"validate_skill.py --format github\" .github/workflows/validate.yml",
-      "grep -qE \"uses: actions/[a-z-]+@v[0-9]\" .github/workflows/validate.yml; test $? -eq 1",
-      "grep -qE \"packages: write|contents: write|id-token: write\" .github/workflows/validate.yml; test $? -eq 1",
+      "rc=0; grep -qE \"uses: actions/[a-z-]+@v[0-9]\" .github/workflows/validate.yml || rc=$?; test \"$rc\" -eq 1",
+      "rc=0; grep -qE \"packages: write|contents: write|id-token: write\" .github/workflows/validate.yml || rc=$?; test \"$rc\" -eq 1",
       "python scripts/validate_skill.py && python scripts/validate_skill.py --self-test"
     ],
     "checkpoint": "step-11-workflow",
@@ -352,7 +352,7 @@
     "verify": [
       "test -x .githooks/pre-commit || test -f .githooks/pre-commit",
       "sh .githooks/pre-commit",
-      "grep -q \"python3\" .githooks/pre-commit; test $? -eq 1",
+      "rc=0; grep -q \"python3\" .githooks/pre-commit || rc=$?; test \"$rc\" -eq 1",
       "git config core.hooksPath .githooks",
       "test \"$(git config core.hooksPath)\" = \".githooks\"",
       "python -m compileall -q scripts",

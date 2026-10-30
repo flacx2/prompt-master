@@ -570,7 +570,44 @@ RULES = {
 # reporting
 
 
-def report(findings, rules_run):
+FORMATS = ("text", "json", "github")
+
+
+def report(findings, rules_run, root=None, fmt="text"):
+    """The only place a finding becomes output, so the three formats cannot drift."""
+    if fmt == "json":
+        print(
+            json.dumps(
+                {
+                    "tool": TOOL,
+                    "repo_root": root,
+                    "rules_run": list(rules_run),
+                    "findings": [
+                        {
+                            "rule": f.rule,
+                            "path": f.path,
+                            "line": f.line,
+                            "message": f.message,
+                        }
+                        for f in findings
+                    ],
+                    "exit_code": 1 if findings else 0,
+                },
+                indent=2,
+            )
+        )
+        return
+    if fmt == "github":
+        for finding in findings:
+            location = "file=%s" % finding.path
+            if finding.line is not None:
+                location += ",line=%d" % finding.line
+            print("::error %s::%s: %s" % (location, finding.rule, finding.message))
+        return
+    report_text(findings, rules_run)
+
+
+def report_text(findings, rules_run):
     for finding in findings:
         if finding.line is None:
             print("%s: %s: %s" % (finding.path, finding.rule, finding.message))
@@ -609,6 +646,13 @@ def build_parser():
     parser.add_argument("--rule", metavar="NAME", help="run exactly one rule")
     parser.add_argument("--config", metavar="PATH", help="use a different config file")
     parser.add_argument("--root", metavar="DIR", help="validate a different tree")
+    parser.add_argument(
+        "--format",
+        choices=FORMATS,
+        default="text",
+        metavar="|".join(FORMATS),
+        help="output format (default: text)",
+    )
     parser.add_argument(
         "--self-test",
         action="store_true",
@@ -730,7 +774,7 @@ def main(argv=None):
     for name in rules_run:
         findings.extend(RULES[name](ctx))
 
-    report(findings, rules_run)
+    report(findings, rules_run, root=root, fmt=args.format)
     return 1 if findings else 0
 
 

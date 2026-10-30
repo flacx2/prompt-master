@@ -504,6 +504,20 @@ of a command is a failure, the expected exit code is asserted explicitly, so a u
 satisfy the gate. No `Verify` block asserts anything its own `Checkpoint` produces: at the moment a
 gate runs, that step's files are written but untracked and its tag does not exist.
 
+**Asserting an expected failure, safely.** Where the correct outcome of a command is a non-zero
+exit, the gate captures the code instead of trailing a bare `test $? -eq N`:
+
+```bash
+rc=0; <command> || rc=$?; test "$rc" -eq 2
+```
+
+`<command>; test $? -eq 2` reads the same and is not the same: under `set -e` — which is how an
+unattended runner and every GitHub Actions `run:` step execute a block — the shell aborts on the
+non-zero command before the assertion is ever reached, so the gate never runs and the step dies
+claiming the command failed. The `|| rc=$?` form keeps the command inside a list `set -e` tolerates,
+and the assertion still pins the specific code, so a usage error cannot satisfy it. A live build of
+step 10 found this the hard way.
+
 Two standing constraints, repeated here because they bind every step:
 
 - **`SKILL.md`, `README.md`, `LICENSE` and everything under `references/` are read-only.** No step
@@ -606,14 +620,14 @@ python scripts/validate_skill.py --version | grep -qx 'validate_skill 1.0.0'   #
 python scripts/validate_skill.py --list-rules | grep -qx budgets   # expect: exit 0 — the rule is registered
 python scripts/validate_skill.py                                   # expect: exit 0, zero findings
 python scripts/validate_skill.py --rule budgets                     # expect: exit 0
-python scripts/validate_skill.py --not-a-flag; test $? -eq 2        # expect: exit code 2 -> this line exits 0
-python scripts/validate_skill.py --rule no-such-rule; test $? -eq 2 # expect: exit code 2 -> this line exits 0
-python scripts/validate_skill.py --config scripts/nope.json; test $? -eq 2  # expect: 2 -> exits 0
+rc=0; python scripts/validate_skill.py --not-a-flag || rc=$?; test "$rc" -eq 2        # expect: exit code 2 -> this line exits 0
+rc=0; python scripts/validate_skill.py --rule no-such-rule || rc=$?; test "$rc" -eq 2 # expect: exit code 2 -> this line exits 0
+rc=0; python scripts/validate_skill.py --config scripts/nope.json || rc=$?; test "$rc" -eq 2  # expect: 2 -> exits 0
 python -m compileall -q scripts                                     # expect: exit 0
-grep -rn "^import \|^from " scripts/validate_skill.py | grep -vE "argparse|json|os|re|sys|pathlib|typing|dataclasses|collections"; test $? -eq 1
+rc=0; grep -rn "^import \|^from " scripts/validate_skill.py | grep -vE "argparse|json|os|re|sys|pathlib|typing|dataclasses|collections" || rc=$?; test "$rc" -eq 1
 # expect: grep finds no non-stdlib import -> exit code 1 -> this line exits 0
 test -f scripts/validator-config.json                               # expect: exit 0 — landed by the workspace copy
-python scripts/validate_skill.py --config blueprints/validation-ci/workspace/scripts/validator-config.json; test $? -eq 2
+rc=0; python scripts/validate_skill.py --config blueprints/validation-ci/workspace/scripts/validator-config.json || rc=$?; test "$rc" -eq 2
 # expect: exit code 2 — the guard refuses a --config inside blueprints/ -> this line exits 0
 ```
 
@@ -623,7 +637,7 @@ python scripts/validate_skill.py --config blueprints/validation-ci/workspace/scr
 git add -A && git commit -m "step 1: validator harness, exit-code contract, budgets rule"
 git tag step-01-harness
 git ls-files --error-unmatch scripts/validate_skill.py   # expect: exit 0 — now that it is committed
-git check-ignore -q scripts/validate_skill.py; test $? -eq 1   # expect: 1 = not ignored -> exits 0
+rc=0; git check-ignore -q scripts/validate_skill.py || rc=$?; test "$rc" -eq 1   # expect: 1 = not ignored -> exits 0
 # rollback target if step 2 goes wrong: git reset --hard step-01-harness
 ```
 
@@ -921,13 +935,13 @@ reachable from a normal run — and because the fixture directory is deliberatel
 **Verify**
 
 ```bash
-python scripts/validate_skill.py --root scripts/tests/fixtures/budgets --config scripts/tests/fixtures/budgets/validator-config.json --rule budgets; test $? -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/budgets --config scripts/tests/fixtures/budgets/validator-config.json --rule budgets || rc=$?; test "$rc" -eq 1
 # expect: exit code 1 -> this line exits 0
 python scripts/validate_skill.py --root scripts/tests/fixtures/budgets --rule zones          # expect: exit 0
-python scripts/validate_skill.py --root scripts/tests/fixtures/frontmatter --rule frontmatter; test $? -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/frontmatter --rule frontmatter || rc=$?; test "$rc" -eq 1
 # expect: exit code 1 -> this line exits 0
 python scripts/validate_skill.py --root scripts/tests/fixtures/frontmatter --rule counts      # expect: exit 0
-python scripts/validate_skill.py --root scripts/tests/fixtures/counts --rule counts; test $? -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/counts --rule counts || rc=$?; test "$rc" -eq 1
 # expect: exit code 1 -> this line exits 0
 python scripts/validate_skill.py --root scripts/tests/fixtures/counts --rule zones            # expect: exit 0
 python scripts/validate_skill.py                                                              # expect: exit 0 — fixtures excluded
@@ -971,13 +985,13 @@ only when all seven behave.
 
 ```bash
 python scripts/validate_skill.py --self-test                     # expect: exit 0, one line per fixture
-python scripts/validate_skill.py --root scripts/tests/fixtures/zones --rule zones; test $? -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/zones --rule zones || rc=$?; test "$rc" -eq 1
 # expect: exit code 1 -> this line exits 0
-python scripts/validate_skill.py --root scripts/tests/fixtures/links --rule links; test $? -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/links --rule links || rc=$?; test "$rc" -eq 1
 # expect: exit code 1 -> this line exits 0
-python scripts/validate_skill.py --root scripts/tests/fixtures/version-sync --rule version-sync; test $? -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/version-sync --rule version-sync || rc=$?; test "$rc" -eq 1
 # expect: exit code 1 -> this line exits 0
-python scripts/validate_skill.py --root scripts/tests/fixtures/encoding --rule encoding; test $? -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/encoding --rule encoding || rc=$?; test "$rc" -eq 1
 # expect: exit code 1 -> this line exits 0
 python scripts/validate_skill.py                                 # expect: exit 0
 python -m compileall -q scripts                                  # expect: exit 0
@@ -1020,12 +1034,13 @@ only, so the three outputs cannot drift from each other.
 ```bash
 python scripts/validate_skill.py --format json | python -m json.tool > /dev/null   # expect: exit 0 — valid JSON
 python scripts/validate_skill.py --format json | grep -q '"exit_code": 0'          # expect: exit 0
-python scripts/validate_skill.py --format json | grep -q '"findings": \[\]'        # expect: exit 0
+python scripts/validate_skill.py --format json | grep -qF '"findings": []'        # expect: exit 0
 python scripts/validate_skill.py --format json | grep -q '"tool": "validate_skill"' # expect: exit 0
-python scripts/validate_skill.py --format json --rule counts | grep -q '"rules_run": \["counts"\]'  # expect: exit 0
+python scripts/validate_skill.py --format json --rule counts | tr -d '[:space:]' | grep -qF '"rules_run":["counts"]'
+# expect: exit 0 — whitespace stripped first, because indent=2 puts each list element on its own line
 python scripts/validate_skill.py --root scripts/tests/fixtures/zones --rule zones --format github | grep -q '^::error file='
 # expect: exit 0 — an annotation was printed
-python scripts/validate_skill.py --format nope; test $? -eq 2       # expect: exit code 2 -> this line exits 0
+rc=0; python scripts/validate_skill.py --format nope || rc=$?; test "$rc" -eq 2       # expect: exit code 2 -> this line exits 0
 python scripts/validate_skill.py --self-test                        # expect: exit 0 — still true
 python -m compileall -q scripts                                     # expect: exit 0
 ```
@@ -1079,9 +1094,9 @@ grep -q "pull_request" .github/workflows/validate.yml                         # 
 grep -qE "^ *python-version: \"3.12\"" .github/workflows/validate.yml         # expect: exit 0
 grep -q "validate_skill.py --self-test" .github/workflows/validate.yml        # expect: exit 0
 grep -q "validate_skill.py --format github" .github/workflows/validate.yml    # expect: exit 0
-grep -qE "uses: actions/[a-z-]+@v[0-9]" .github/workflows/validate.yml; test $? -eq 1
+rc=0; grep -qE "uses: actions/[a-z-]+@v[0-9]" .github/workflows/validate.yml || rc=$?; test "$rc" -eq 1
 # expect: no floating tag reference -> grep exits 1 -> this line exits 0
-grep -qE "packages: write|contents: write|id-token: write" .github/workflows/validate.yml; test $? -eq 1
+rc=0; grep -qE "packages: write|contents: write|id-token: write" .github/workflows/validate.yml || rc=$?; test "$rc" -eq 1
 # expect: no write permission anywhere -> exits 0
 python scripts/validate_skill.py && python scripts/validate_skill.py --self-test   # expect: exit 0
 ```
@@ -1124,7 +1139,7 @@ bypassed, so CI remains what blocks a merge.
 ```bash
 test -x .githooks/pre-commit || test -f .githooks/pre-commit        # expect: exit 0
 sh .githooks/pre-commit                                              # expect: exit 0 on a clean tree
-grep -q "python3" .githooks/pre-commit; test $? -eq 1                # expect: no python3 -> exits 0
+rc=0; grep -q "python3" .githooks/pre-commit || rc=$?; test "$rc" -eq 1                # expect: no python3 -> exits 0
 git config core.hooksPath .githooks                                  # expect: exit 0, idempotent
 test "$(git config core.hooksPath)" = ".githooks"                    # expect: exit 0
 python -m compileall -q scripts                                      # expect: exit 0
@@ -1687,7 +1702,8 @@ it rather than against a prediction:
 | Byte-exact artifact | Authored by | First diffed at | Blueprint rules that constrain it | Runtime call that produces it, on the §11 pin | Both confirmed |
 |---|---|---|---|---|---|
 | The two action SHA strings in `.github/workflows/validate.yml` | §9 step 11, from §11's provenance rows | step 11's `Verify` greps for each | §11 is the only place a version is justified; the workflow is executable and must carry the literal | `https://api.github.com/repos/actions/checkout/git/ref/tags/v7.0.1` and the `setup-python` equivalent, read 2026-10-21; both refs were type `commit`, so the SHA is the commit the tag names | yes |
-| `"tool": "validate_skill"`, `"findings": []`, `"exit_code": 0` and `"rules_run": ["counts"]` in step 10's `Verify` | §9 step 10 authors the formatter that emits them | step 10's `Verify` greps for each | §4's *Schema* fixes all five keys; §5 fixes the exit-code semantics | `json.dumps(..., indent=2)` on the pinned interpreter emits `"key": value` with exactly one space after the colon and `[]` for an empty list — the spacing the greps depend on. Step 10's gate is the first thing that runs it, so a formatter change that alters the spacing fails there rather than later | yes |
+| `"tool": "validate_skill"`, `"findings": []` and `"exit_code": 0` in step 10's `Verify` | §9 step 10 authors the formatter that emits them | step 10's `Verify` greps for each | §4's *Schema* fixes all five keys; §5 fixes the exit-code semantics | `json.dumps(..., indent=2)` on the pinned interpreter emits `"key": value` with exactly one space after the colon and `[]` for an empty list. **It also puts every non-empty list element on its own line**, which a live build of step 10 proved: the `"rules_run": ["counts"]` literal this row used to claim is unproducible, so that gate asserts the property instead — pipe through `tr -d '[:space:]'` first, then grep — not `tr -d ' 
+'`, which leaves the carriage returns a Windows interpreter emits. Byte-exact comparison is reserved for the three literals above, which are single-line by construction | yes |
 | `.githooks` as the value of `core.hooksPath` | §9 step 12 sets it | step 12's `Verify` compares it | §19.6's cross-artifact table owns the literal | `git config core.hooksPath` echoes back exactly what was set, with no normalisation of a relative path | yes |
 
 ---
@@ -1710,7 +1726,7 @@ python scripts/validate_skill.py                                     # expect: e
 python scripts/validate_skill.py --format json | python -m json.tool > /dev/null   # expect: exit 0
 python scripts/validate_skill.py --format github                     # expect: exit 0, no annotations on a clean tree
 sh .githooks/pre-commit                                              # expect: exit 0 — the local gate agrees with CI
-python scripts/validate_skill.py --not-a-flag; test $? -eq 2         # expect: exit code 2 -> this line exits 0
+rc=0; python scripts/validate_skill.py --not-a-flag || rc=$?; test "$rc" -eq 2         # expect: exit code 2 -> this line exits 0
 git diff --quiet HEAD -- SKILL.md README.md LICENSE references        # expect: exit 0 — upstream content byte-identical
 ```
 
@@ -1731,7 +1747,7 @@ Plus these manual gates, each checked once before calling the change done:
 - [ ] Every file §10's *Files that must be committed* table names is present in a clean checkout:
       `git ls-files --error-unmatch <path>` exits 0 for each, **one path per invocation**, so a
       failure names the file rather than the command. And the not-ignored companion, per path:
-      `git check-ignore -q <path>; test $? -eq 1` — exit 1 means no ignore rule matched, which is
+      rc=0; `git check-ignore -q <path> || rc=$?; test "$rc" -eq 1` — exit 1 means no ignore rule matched, which is
       what is wanted; a bare negation would pass on git's usage exit 128 and prove nothing.
 - [ ] The ignore file was in place before the baseline commit: it ships in the bundle's `workspace/`
       and is landed by §10's copy, which runs before the guarded commit line. No §9 step authors it.

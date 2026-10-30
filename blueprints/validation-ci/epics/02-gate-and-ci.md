@@ -67,8 +67,11 @@ interchangeable:
 | `2` | the validator's own usage error — unknown flag, unknown rule name, missing or unparseable `scripts/validator-config.json`, a file named in the config's `files` that cannot be read |
 
 Never collapse `2` into `1`. A gate whose pass condition were merely "non-zero" would accept a typo
-in its own flag as proof the repository is broken, which is why several `Verify` lines below assert
-`test $? -eq 2` rather than a bare negation.
+in its own flag as proof the repository is broken, which is why several `Verify` lines below capture
+the status and assert the exact code - `rc=0; <command> || rc=$?; test "$rc" -eq 2` - rather than
+writing a bare negation or trailing `; test $? -eq 2`. The trailing form aborts under `set -e`,
+which is how an unattended runner and every GitHub Actions `run:` step execute a block, so the
+assertion never runs and the step dies claiming the command failed.
 
 ## The `Finding` shape
 
@@ -222,7 +225,8 @@ command below, on this machine, during the build.
 
 **Verify** — every command, in order, run from the repository root. Each exits 0 when this task
 is correct; the last one exiting 0 is what makes the task done. Exit-code wrapping is part of the
-command — do not unwrap `test $? -eq N` into the bare call.
+command - do not unwrap `rc=0; ... || rc=$?; test "$rc" -eq N` into the bare call, and do not
+shorten it to a trailing `; test $? -eq N`, which `set -e` aborts before the assertion.
 
 ```bash
 python scripts/validate_skill.py --rule encoding
@@ -293,14 +297,15 @@ command below, on this machine, during the build.
 
 **Verify** — every command, in order, run from the repository root. Each exits 0 when this task
 is correct; the last one exiting 0 is what makes the task done. Exit-code wrapping is part of the
-command — do not unwrap `test $? -eq N` into the bare call.
+command - do not unwrap `rc=0; ... || rc=$?; test "$rc" -eq N` into the bare call, and do not
+shorten it to a trailing `; test $? -eq N`, which `set -e` aborts before the assertion.
 
 ```bash
-python scripts/validate_skill.py --root scripts/tests/fixtures/budgets --config scripts/tests/fixtures/budgets/validator-config.json --rule budgets; test $? -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/budgets --config scripts/tests/fixtures/budgets/validator-config.json --rule budgets || rc=$?; test "$rc" -eq 1
 python scripts/validate_skill.py --root scripts/tests/fixtures/budgets --rule zones
-python scripts/validate_skill.py --root scripts/tests/fixtures/frontmatter --rule frontmatter; test $? -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/frontmatter --rule frontmatter || rc=$?; test "$rc" -eq 1
 python scripts/validate_skill.py --root scripts/tests/fixtures/frontmatter --rule counts
-python scripts/validate_skill.py --root scripts/tests/fixtures/counts --rule counts; test $? -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/counts --rule counts || rc=$?; test "$rc" -eq 1
 python scripts/validate_skill.py --root scripts/tests/fixtures/counts --rule zones
 python scripts/validate_skill.py
 python -m compileall -q scripts
@@ -358,14 +363,15 @@ command below, on this machine, during the build.
 
 **Verify** — every command, in order, run from the repository root. Each exits 0 when this task
 is correct; the last one exiting 0 is what makes the task done. Exit-code wrapping is part of the
-command — do not unwrap `test $? -eq N` into the bare call.
+command - do not unwrap `rc=0; ... || rc=$?; test "$rc" -eq N` into the bare call, and do not
+shorten it to a trailing `; test $? -eq N`, which `set -e` aborts before the assertion.
 
 ```bash
 python scripts/validate_skill.py --self-test
-python scripts/validate_skill.py --root scripts/tests/fixtures/zones --rule zones; test $? -eq 1
-python scripts/validate_skill.py --root scripts/tests/fixtures/links --rule links; test $? -eq 1
-python scripts/validate_skill.py --root scripts/tests/fixtures/version-sync --rule version-sync; test $? -eq 1
-python scripts/validate_skill.py --root scripts/tests/fixtures/encoding --rule encoding; test $? -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/zones --rule zones || rc=$?; test "$rc" -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/links --rule links || rc=$?; test "$rc" -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/version-sync --rule version-sync || rc=$?; test "$rc" -eq 1
+rc=0; python scripts/validate_skill.py --root scripts/tests/fixtures/encoding --rule encoding || rc=$?; test "$rc" -eq 1
 python scripts/validate_skill.py
 python -m compileall -q scripts
 ```
@@ -403,6 +409,13 @@ Use `json.dumps` with `indent=2` and leave the spacing alone: this task's gate g
 `"exit_code": 0` and `"findings": []`, and a hand-built string or a different separator setting
 breaks those lines for a reason that has nothing to do with the repository.
 
+**`indent=2` also puts every non-empty list element on its own line**, so do not expect
+`"rules_run": ["counts"]` to appear anywhere — a live build hit exactly that. The gate strips
+whitespace with `tr -d '[:space:]'` before grepping — `' 
+'` leaves the carriage returns a Windows
+interpreter emits, which a live build spent a round on, which asserts the property without depending on the
+formatter's line breaks.
+
 **Files**
 
 - `scripts/validate_skill.py`
@@ -420,16 +433,17 @@ command below, on this machine, during the build.
 
 **Verify** — every command, in order, run from the repository root. Each exits 0 when this task
 is correct; the last one exiting 0 is what makes the task done. Exit-code wrapping is part of the
-command — do not unwrap `test $? -eq N` into the bare call.
+command - do not unwrap `rc=0; ... || rc=$?; test "$rc" -eq N` into the bare call, and do not
+shorten it to a trailing `; test $? -eq N`, which `set -e` aborts before the assertion.
 
 ```bash
 python scripts/validate_skill.py --format json | python -m json.tool > /dev/null
 python scripts/validate_skill.py --format json | grep -q '"exit_code": 0'
-python scripts/validate_skill.py --format json | grep -q '"findings": \[\]'
+python scripts/validate_skill.py --format json | grep -qF '"findings": []'
 python scripts/validate_skill.py --format json | grep -q '"tool": "validate_skill"'
-python scripts/validate_skill.py --format json --rule counts | grep -q '"rules_run": \["counts"\]'
+python scripts/validate_skill.py --format json --rule counts | tr -d '[:space:]' | grep -qF '"rules_run":["counts"]'
 python scripts/validate_skill.py --root scripts/tests/fixtures/zones --rule zones --format github | grep -q '^::error file='
-python scripts/validate_skill.py --format nope; test $? -eq 2
+rc=0; python scripts/validate_skill.py --format nope || rc=$?; test "$rc" -eq 2
 python scripts/validate_skill.py --self-test
 python -m compileall -q scripts
 ```
@@ -491,7 +505,8 @@ command below, on this machine, during the build.
 
 **Verify** — every command, in order, run from the repository root. Each exits 0 when this task
 is correct; the last one exiting 0 is what makes the task done. Exit-code wrapping is part of the
-command — do not unwrap `test $? -eq N` into the bare call.
+command - do not unwrap `rc=0; ... || rc=$?; test "$rc" -eq N` into the bare call, and do not
+shorten it to a trailing `; test $? -eq N`, which `set -e` aborts before the assertion.
 
 ```bash
 test -f .github/workflows/validate.yml
@@ -502,8 +517,8 @@ grep -q "pull_request" .github/workflows/validate.yml
 grep -qE '^ *python-version: "3.12"' .github/workflows/validate.yml
 grep -q "validate_skill.py --self-test" .github/workflows/validate.yml
 grep -q "validate_skill.py --format github" .github/workflows/validate.yml
-grep -qE "uses: actions/[a-z-]+@v[0-9]" .github/workflows/validate.yml; test $? -eq 1
-grep -qE "packages: write|contents: write|id-token: write" .github/workflows/validate.yml; test $? -eq 1
+rc=0; grep -qE "uses: actions/[a-z-]+@v[0-9]" .github/workflows/validate.yml || rc=$?; test "$rc" -eq 1
+rc=0; grep -qE "packages: write|contents: write|id-token: write" .github/workflows/validate.yml || rc=$?; test "$rc" -eq 1
 python scripts/validate_skill.py && python scripts/validate_skill.py --self-test
 ```
 
@@ -559,12 +574,13 @@ command below, on this machine, during the build.
 
 **Verify** — every command, in order, run from the repository root. Each exits 0 when this task
 is correct; the last one exiting 0 is what makes the task done. Exit-code wrapping is part of the
-command — do not unwrap `test $? -eq N` into the bare call.
+command - do not unwrap `rc=0; ... || rc=$?; test "$rc" -eq N` into the bare call, and do not
+shorten it to a trailing `; test $? -eq N`, which `set -e` aborts before the assertion.
 
 ```bash
 test -x .githooks/pre-commit || test -f .githooks/pre-commit
 sh .githooks/pre-commit
-grep -q "python3" .githooks/pre-commit; test $? -eq 1
+rc=0; grep -q "python3" .githooks/pre-commit || rc=$?; test "$rc" -eq 1
 git config core.hooksPath .githooks
 test "$(git config core.hooksPath)" = ".githooks"
 python -m compileall -q scripts
