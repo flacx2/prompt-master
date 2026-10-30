@@ -262,9 +262,76 @@ def rule_frontmatter(ctx):
     return findings
 
 
+NUMBERED_TABLE_ROW = re.compile(r"^\| *\d+ *\|")
+TEMPLATE_HEADING = "## Template "
+TRUTH_COUNTERS = {
+    "numbered_table_row": lambda line: bool(NUMBERED_TABLE_ROW.match(line)),
+    "template_heading": lambda line: line.startswith(TEMPLATE_HEADING),
+}
+# One shape catches every form the documents actually use: "37 patterns",
+# "37-pattern", "37 Credit-Killing Patterns", "13 templates", "13 Prompt
+# Templates" - a number, at most one intervening word, then the noun.
+CLAIM = r"(\d+)[ \t-]+(?:[A-Za-z-]+[ \t]+)?%ss?\b"
+
+
+def count_truth(ctx, kind, spec):
+    rel = spec.get("truth_file")
+    counter = TRUTH_COUNTERS.get(spec.get("truth_kind"))
+    if counter is None:
+        die("config: counts[%r] has an unknown truth_kind %r" % (kind, spec.get("truth_kind")))
+    entry = ctx.files.get(rel)
+    if entry is None or entry.text is None:
+        die("config: counts[%r] names truth_file %r, which is not a readable configured file"
+            % (kind, rel))
+    return sum(1 for line in entry.text.splitlines() if counter(line))
+
+
+def claim_scan_limit(ctx, rel, text):
+    """Where claim scanning stops in this file, if anywhere.
+
+    The readme's Version History records historical counts - its 1.1.0 entry
+    says 35 patterns, truthfully, about the past - so scanning past the marker
+    would make this rule permanently red on content that may not be edited.
+    """
+    marker = ctx.config.get("claim_scan_stop_markers", {}).get(rel)
+    if not marker:
+        return len(text)
+    index = text.find(marker)
+    return len(text) if index == -1 else index
+
+
+def rule_counts(ctx):
+    """Every count claimed in prose equals the number its own file defines."""
+    findings = []
+    for kind, spec in ctx.config.get("counts", {}).items():
+        truth = count_truth(ctx, kind, spec)
+        pattern = re.compile(CLAIM % kind.rstrip("s"), re.IGNORECASE)
+        for rel, entry in ctx.files.items():
+            if entry.text is None:
+                continue
+            limit = claim_scan_limit(ctx, rel, entry.text)
+            for match in pattern.finditer(entry.text):
+                if match.start() >= limit:
+                    continue
+                claimed = int(match.group(1))
+                if claimed != truth:
+                    line = entry.text.count("\n", 0, match.start()) + 1
+                    findings.append(
+                        Finding(
+                            rule="counts",
+                            path=rel,
+                            line=line,
+                            message="claims %d %s (%r); %s defines %d"
+                            % (claimed, kind, match.group(0), spec["truth_file"], truth),
+                        )
+                    )
+    return findings
+
+
 RULES = {
     "budgets": rule_budgets,
     "frontmatter": rule_frontmatter,
+    "counts": rule_counts,
 }
 
 
