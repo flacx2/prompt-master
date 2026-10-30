@@ -1,0 +1,22 @@
+#!/bin/sh
+# Catch drift before the push. This is a convenience, never the gate: it is
+# bypassable with --no-verify and absent on a fresh clone until someone runs
+# `git config core.hooksPath .githooks` once. CI is what blocks a merge.
+#
+# POSIX sh only - this runs under the shell git ships on Windows. No arrays and
+# no bashisms. Every interpreter call is plain `python`: the three-suffixed alias
+# resolves to the Microsoft Store stub on the maintainer's machine rather than to
+# an interpreter, so this file must not contain it anywhere - the task's own gate
+# greps for it and expects no match.
+
+set -e
+
+fail() {
+    echo "pre-commit: $1 - commit aborted. Run it yourself to see the detail." >&2
+    exit 1
+}
+
+python -m compileall -q scripts || fail "scripts/ does not byte-compile"
+python -m json.tool scripts/validator-config.json >/dev/null || fail "scripts/validator-config.json does not parse"
+python scripts/validate_skill.py --self-test >/dev/null || fail "a rule no longer fails its own fixture"
+python scripts/validate_skill.py || fail "the skill documents are not self-consistent"
