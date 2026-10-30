@@ -484,6 +484,77 @@ def rule_version_sync(ctx):
     ]
 
 
+BOM = b"\xef\xbb\xbf"
+
+
+def rule_encoding(ctx):
+    """Bytes-level hygiene, switched by the config's encoding object.
+
+    forbid_crlf is false on purpose. Every committed blob here is CRLF and
+    core.autocrlf is true locally; flagging it would demand a rewrite of four
+    read-only documents and guarantee a conflict on the next upstream merge.
+    """
+    rules = ctx.config.get("encoding", {})
+    findings = []
+    for rel in ctx.config.get("files", {}):
+        entry = ctx.files[rel]
+
+        if rules.get("require_utf8", True) and entry.text is None:
+            try:
+                entry.raw.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                findings.append(
+                    Finding(
+                        rule="encoding",
+                        path=rel,
+                        line=None,
+                        message="is not valid UTF-8 at byte %d (%s)" % (exc.start, exc.reason),
+                    )
+                )
+            continue
+
+        if rules.get("forbid_bom", True) and entry.raw.startswith(BOM):
+            findings.append(
+                Finding(
+                    rule="encoding",
+                    path=rel,
+                    line=1,
+                    message="starts with a byte-order mark",
+                )
+            )
+
+        if rules.get("forbid_crlf", False) and b"\r\n" in entry.raw:
+            findings.append(
+                Finding(
+                    rule="encoding",
+                    path=rel,
+                    line=None,
+                    message="contains CRLF line endings",
+                )
+            )
+
+        if rules.get("require_single_trailing_newline", True) and entry.text is not None:
+            if not entry.text.endswith("\n"):
+                findings.append(
+                    Finding(
+                        rule="encoding",
+                        path=rel,
+                        line=None,
+                        message="does not end with a newline",
+                    )
+                )
+            elif entry.text.endswith("\n\n"):
+                findings.append(
+                    Finding(
+                        rule="encoding",
+                        path=rel,
+                        line=None,
+                        message="ends with more than one newline",
+                    )
+                )
+    return findings
+
+
 RULES = {
     "budgets": rule_budgets,
     "frontmatter": rule_frontmatter,
@@ -491,6 +562,7 @@ RULES = {
     "zones": rule_zones,
     "links": rule_links,
     "version-sync": rule_version_sync,
+    "encoding": rule_encoding,
 }
 
 
