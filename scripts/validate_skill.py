@@ -17,6 +17,7 @@ Exit codes are a public interface:
 import argparse
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional
@@ -177,8 +178,93 @@ def rule_budgets(ctx):
     return findings
 
 
+FRONTMATTER_DELIMITER = "---"
+SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
+
+
+def parse_frontmatter(text):
+    """The skill file's delimited header, parsed once and reused by every rule.
+
+    Returns (mapping, error). The mapping is empty when error is set. Six lines
+    of string handling rather than a YAML dependency: the block is three flat
+    keys deep and is the only YAML in the repository.
+    """
+    if text is None:
+        return {}, "the file does not decode as UTF-8"
+    lines = text.split("\n")
+    if not lines or lines[0].strip() != FRONTMATTER_DELIMITER:
+        return {}, "no frontmatter block: the file does not open with %r" % FRONTMATTER_DELIMITER
+    fields = {}
+    for line in lines[1:]:
+        if line.strip() == FRONTMATTER_DELIMITER:
+            return fields, None
+        if not line.strip():
+            continue
+        key, sep, value = line.partition(":")
+        if sep:
+            fields[key.strip()] = value.strip()
+    return {}, "the frontmatter block is never closed by %r" % FRONTMATTER_DELIMITER
+
+
+def rule_frontmatter(ctx):
+    """The skill file's header carries the keys the loader reads, with sane values."""
+    rel = ctx.config.get("skill_file")
+    entry = ctx.files[rel]
+    fields, error = parse_frontmatter(entry.text)
+    if error:
+        return [Finding(rule="frontmatter", path=rel, line=1, message=error)]
+
+    findings = []
+    for key in ctx.config.get("required_frontmatter_keys", []):
+        if key not in fields:
+            findings.append(
+                Finding(
+                    rule="frontmatter",
+                    path=rel,
+                    line=1,
+                    message="required key %r is missing from the frontmatter" % key,
+                )
+            )
+        elif not fields[key]:
+            findings.append(
+                Finding(
+                    rule="frontmatter",
+                    path=rel,
+                    line=1,
+                    message="required key %r is present but empty" % key,
+                )
+            )
+
+    expected = ctx.config.get("expected_name")
+    # The expected name comes from the config, never from the directory name:
+    # a fixture tree lives in a differently named directory and must not fail
+    # this rule for that reason alone.
+    if expected and fields.get("name") and fields["name"] != expected:
+        findings.append(
+            Finding(
+                rule="frontmatter",
+                path=rel,
+                line=1,
+                message="name is %r; the config expects %r" % (fields["name"], expected),
+            )
+        )
+
+    version = fields.get("version")
+    if version and not SEMVER.match(version):
+        findings.append(
+            Finding(
+                rule="frontmatter",
+                path=rel,
+                line=1,
+                message="version %r is not three dot-separated runs of digits" % version,
+            )
+        )
+    return findings
+
+
 RULES = {
     "budgets": rule_budgets,
+    "frontmatter": rule_frontmatter,
 }
 
 
