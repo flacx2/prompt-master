@@ -453,12 +453,44 @@ def rule_links(ctx):
     return findings
 
 
+def rule_version_sync(ctx):
+    """The frontmatter version is named in the readme.
+
+    Presence, not ordering. Asserting that the newest Version History entry
+    matches would be a regular expression over upstream's prose formatting - a
+    gate that breaks on a wording change rather than on a real defect, on
+    content this fork may not edit to satisfy it.
+    """
+    skill_rel = ctx.config.get("skill_file")
+    readme_rel = ctx.config.get("readme_file")
+    fields, error = parse_frontmatter(ctx.files[skill_rel].text)
+    if error:
+        return []  # the frontmatter rule owns that failure; one defect, one finding
+    version = fields.get("version")
+    if not version:
+        return []
+    readme = ctx.files[readme_rel]
+    if readme.text is None:
+        return []
+    if ("**%s**" % version) in readme.text:
+        return []
+    return [
+        Finding(
+            rule="version-sync",
+            path=readme_rel,
+            line=1,
+            message="does not mention version %s, which %s declares" % (version, skill_rel),
+        )
+    ]
+
+
 RULES = {
     "budgets": rule_budgets,
     "frontmatter": rule_frontmatter,
     "counts": rule_counts,
     "zones": rule_zones,
     "links": rule_links,
+    "version-sync": rule_version_sync,
 }
 
 
