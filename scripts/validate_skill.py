@@ -384,11 +384,81 @@ def rule_zones(ctx):
     return findings
 
 
+REFERENCE_PATH = re.compile(r"references/[A-Za-z0-9_.-]+\.md")
+ANCHOR_LINK = re.compile(r"\]\(#([^)]+)\)")
+HEADING = re.compile(r"^#{1,6} +(.+?)\s*$")
+SLUG_STRIP = re.compile(r"[^\w\s-]", re.UNICODE)
+SLUG_SPACE = re.compile(r"\s")
+
+
+def github_slug(heading):
+    """GitHub's heading slug: lowercase, drop all but word/space/hyphen, then
+    replace EACH whitespace character with a hyphen.
+
+    Per character, not per run. An em dash surrounded by spaces is dropped and
+    its two spaces each become a hyphen, so 'Template A (em dash) RTF' slugs to
+    'template-a--rtf' - which is what GitHub renders and what every correct
+    table-of-contents entry in references/templates.md links to. Collapsing the
+    run would report all thirteen correct anchors as broken.
+    """
+    return SLUG_SPACE.sub("-", SLUG_STRIP.sub("", heading.lower()))
+
+
+def rule_links(ctx):
+    """Reference paths resolve on disk, and in-file anchors resolve to real headings."""
+    findings = []
+
+    for key in ("skill_file", "readme_file"):
+        rel = ctx.config.get(key)
+        entry = ctx.files.get(rel)
+        if entry is None or entry.text is None:
+            continue
+        seen = set()
+        for match in REFERENCE_PATH.finditer(entry.text):
+            target = match.group(0)
+            line = entry.text.count("\n", 0, match.start()) + 1
+            if (target, line) in seen:
+                continue
+            seen.add((target, line))
+            if not os.path.isfile(os.path.join(ctx.root, target)):
+                findings.append(
+                    Finding(
+                        rule="links",
+                        path=rel,
+                        line=line,
+                        message="mentions %s, which does not exist on disk" % target,
+                    )
+                )
+
+    for rel, entry in ctx.files.items():
+        if entry.text is None or not rel.startswith("references/"):
+            continue
+        slugs = set()
+        for line in entry.text.splitlines():
+            found = HEADING.match(line)
+            if found:
+                slugs.add(github_slug(found.group(1)))
+        for match in ANCHOR_LINK.finditer(entry.text):
+            anchor = match.group(1)
+            if anchor not in slugs:
+                line = entry.text.count("\n", 0, match.start()) + 1
+                findings.append(
+                    Finding(
+                        rule="links",
+                        path=rel,
+                        line=line,
+                        message="anchor #%s matches no heading in this file" % anchor,
+                    )
+                )
+    return findings
+
+
 RULES = {
     "budgets": rule_budgets,
     "frontmatter": rule_frontmatter,
     "counts": rule_counts,
     "zones": rule_zones,
+    "links": rule_links,
 }
 
 

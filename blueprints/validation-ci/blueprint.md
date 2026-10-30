@@ -765,7 +765,7 @@ Add `rule_links(ctx)` and register it. Two checks, both over text the file map a
 - **In-file anchors.** In the templates reference, every Markdown link whose target begins with `#`
   must resolve to a heading in that same file. The slug is computed the way GitHub computes it:
   lowercase the heading text, drop every character that is not a word character, whitespace or
-  hyphen, then replace each whitespace run with a single hyphen. On this repository that makes the
+  hyphen, then replace each whitespace character with a hyphen. On this repository that makes the
   table-of-contents link for `Template A — RTF` resolve to the heading of the same name, and all
   thirteen resolve today.
 

@@ -441,7 +441,8 @@ exist on disk. There are two such paths today and both resolve.
 In-file anchors: in the templates reference, every Markdown link whose target starts with `#` must
 resolve to a heading in that same file. **Implement GitHub's slug algorithm exactly** — lowercase the
 heading text, drop every character that is not a word character, whitespace or a hyphen, then replace
-each whitespace run with a single hyphen. The thirteen table-of-contents entries use em dashes, so a
+EACH whitespace character with a hyphen - per character, never per run. The thirteen
+table-of-contents entries use em dashes, so a
 naive slugger that keeps punctuation or collapses double hyphens reports thirteen false findings on
 correct content. All thirteen were confirmed to resolve under this algorithm on 2026-10-21; if your
 implementation disagrees, the implementation is wrong.
@@ -458,7 +459,7 @@ command below, on this machine, during the build.
 1. WHEN the `links` rule runs against this repository THE SYSTEM SHALL report zero findings, because both paths under `references/` that the documents mention exist on disk and every in-file anchor link in `references/templates.md` resolves to a heading in that same file.
 2. WHEN a mentioned path under `references/` does not exist THE SYSTEM SHALL report one finding at the mention's line.
 3. WHEN an in-file anchor names a slug no heading produces THE SYSTEM SHALL report one finding carrying that slug.
-4. WHEN a heading contains an em dash THE SYSTEM SHALL compute the same slug GitHub computes — lowercase, drop every character that is not a word character, whitespace or hyphen, then replace each whitespace run with one hyphen — so a correct table-of-contents entry is not reported.
+4. WHEN a heading contains an em dash THE SYSTEM SHALL compute the same slug GitHub computes — lowercase, drop every character that is not a word character, whitespace or hyphen, then replace EACH whitespace character with a hyphen, per character and never per run, so an em dash between two spaces yields a double hyphen — and a correct table-of-contents entry is therefore not reported.
 
 **Verify** — every command, in order, run from the repository root. Each exits 0 when this task
 is correct; the last one exiting 0 is what makes the task done. Exit-code wrapping is part of the
@@ -569,8 +570,9 @@ waits on a human or an external service.
 - **Scanning the readme past its Version History heading.** The `1.1.0` entry claims 35 patterns,
   truthfully, about the past. A rule that reports it is permanently red on content nobody may edit.
 - **A naive anchor slugger.** The thirteen table-of-contents headings contain em dashes. Drop every
-  character that is not a word character, whitespace or hyphen, then collapse whitespace runs to one
-  hyphen — and do not also collapse the resulting double hyphens, because GitHub does not.
+  character that is not a word character, whitespace or hyphen, then replace EACH whitespace
+  character with a hyphen. Per character, never per run: a live build collapsed the runs and reported
+  all thirteen correct anchors as broken.
 - **Returning exit 1 for a bad flag or a missing config.** Those are exit 2. Several gates assert the
   exact code, so collapsing them turns a green gate into a lie.
 - **Reaching for PyYAML, pytest or ruff.** The frontmatter block is three flat keys and the file is

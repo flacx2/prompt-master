@@ -125,7 +125,7 @@
       "WHEN the `links` rule runs against this repository THE SYSTEM SHALL report zero findings, because both paths under `references/` that the documents mention exist on disk and every in-file anchor link in `references/templates.md` resolves to a heading in that same file.",
       "WHEN a mentioned path under `references/` does not exist THE SYSTEM SHALL report one finding at the mention's line.",
       "WHEN an in-file anchor names a slug no heading produces THE SYSTEM SHALL report one finding carrying that slug.",
-      "WHEN a heading contains an em dash THE SYSTEM SHALL compute the same slug GitHub computes — lowercase, drop every character that is not a word character, whitespace or hyphen, then replace each whitespace run with one hyphen — so a correct table-of-contents entry is not reported."
+      "WHEN a heading contains an em dash THE SYSTEM SHALL compute the same slug GitHub computes — lowercase, drop every character that is not a word character, whitespace or hyphen, then replace EACH whitespace character with a hyphen, per character and never per run, so an em dash between two spaces yields a double hyphen — and a correct table-of-contents entry is therefore not reported."
     ],
     "verify": [
       "python scripts/validate_skill.py --rule links",
