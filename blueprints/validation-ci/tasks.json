@@ -1,0 +1,371 @@
+[
+  {
+    "id": "E1-T1",
+    "title": "Build the validator harness and the budgets rule",
+    "epic": "01-validator-core",
+    "dependencies": [],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `python scripts/validate_skill.py --version` runs THE SYSTEM SHALL print `validate_skill 1.0.0` and exit 0.",
+      "WHEN `python scripts/validate_skill.py --list-rules` runs THE SYSTEM SHALL print `budgets` and exit 0.",
+      "WHEN `python scripts/validate_skill.py` runs against this repository THE SYSTEM SHALL report zero findings and exit 0, because each document's newline-terminated line count — 496, 422, 82 and 442 — is under its ceiling in `scripts/validator-config.json`.",
+      "WHEN an unknown flag is passed THE SYSTEM SHALL exit 2 and SHALL NOT exit 1, so a malformed command can never be mistaken for a failing repository.",
+      "WHEN `--rule no-such-rule` is passed THE SYSTEM SHALL exit 2 and print the registered rule names.",
+      "WHEN `--config` names a file that does not exist THE SYSTEM SHALL exit 2 with a message beginning `config:`."
+    ],
+    "verify": [
+      "python scripts/validate_skill.py --version",
+      "python scripts/validate_skill.py --version | grep -qx 'validate_skill 1.0.0'",
+      "python scripts/validate_skill.py --list-rules | grep -qx budgets",
+      "python scripts/validate_skill.py",
+      "python scripts/validate_skill.py --rule budgets",
+      "python scripts/validate_skill.py --not-a-flag; test $? -eq 2",
+      "python scripts/validate_skill.py --rule no-such-rule; test $? -eq 2",
+      "python scripts/validate_skill.py --config scripts/nope.json; test $? -eq 2",
+      "python -m compileall -q scripts",
+      "grep -rn \"^import \\|^from \" scripts/validate_skill.py | grep -vE \"argparse|json|os|re|sys|pathlib|typing|dataclasses|collections\"; test $? -eq 1",
+      "test -f scripts/validator-config.json",
+      "python scripts/validate_skill.py --config blueprints/validation-ci/workspace/scripts/validator-config.json; test $? -eq 2"
+    ],
+    "checkpoint": "step-01-harness",
+    "files": [
+      "scripts/validate_skill.py"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T2",
+    "title": "Add the frontmatter rule",
+    "epic": "01-validator-core",
+    "dependencies": [
+      "E1-T1"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN the `frontmatter` rule runs against this repository THE SYSTEM SHALL report zero findings, because `SKILL.md` carries `name`, `version` and `description` with `name` equal to the `expected_name` in `scripts/validator-config.json`.",
+      "WHEN the frontmatter block is missing its closing delimiter THE SYSTEM SHALL report exactly one finding at line 1.",
+      "WHEN a required key is absent THE SYSTEM SHALL report one finding naming that key.",
+      "WHEN the version value is not three dot-separated runs of digits THE SYSTEM SHALL report one finding quoting the value found.",
+      "WHEN `--list-rules` runs THE SYSTEM SHALL print both `budgets` and `frontmatter`."
+    ],
+    "verify": [
+      "python scripts/validate_skill.py --rule frontmatter",
+      "python scripts/validate_skill.py --list-rules | grep -qx frontmatter",
+      "python scripts/validate_skill.py",
+      "python -m compileall -q scripts"
+    ],
+    "checkpoint": "step-02-frontmatter",
+    "files": [
+      "scripts/validate_skill.py"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T3",
+    "title": "Add the counts rule",
+    "epic": "01-validator-core",
+    "dependencies": [
+      "E1-T1"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN the `counts` rule runs against this repository THE SYSTEM SHALL report zero findings, because every pattern claim equals the number of numbered table rows in `references/patterns.md` and every template claim equals the number of `## Template ` headings in `references/templates.md`.",
+      "WHEN a claim states a number that differs from its derived truth THE SYSTEM SHALL report one finding at that claim's line, naming both numbers.",
+      "WHEN a historical claim appears below the stop marker configured for that file THE SYSTEM SHALL report nothing for it.",
+      "WHEN a configured truth file is missing from the tree THE SYSTEM SHALL exit 2 rather than report a finding.",
+      "WHEN the number of rows in `references/patterns.md` changes and every claim is updated to match THE SYSTEM SHALL stay silent without any edit to the rule."
+    ],
+    "verify": [
+      "python scripts/validate_skill.py --rule counts",
+      "python scripts/validate_skill.py --list-rules | grep -qx counts",
+      "python scripts/validate_skill.py",
+      "python -m compileall -q scripts"
+    ],
+    "checkpoint": "step-03-counts",
+    "files": [
+      "scripts/validate_skill.py"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T4",
+    "title": "Add the zones rule",
+    "epic": "01-validator-core",
+    "dependencies": [
+      "E1-T1"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN the `zones` rule runs against this repository THE SYSTEM SHALL report zero findings, because the three zone names in `scripts/validator-config.json` each appear exactly once in `SKILL.md` as a level-two heading, in the listed order.",
+      "WHEN a zone heading is absent THE SYSTEM SHALL report one finding naming that zone.",
+      "WHEN a zone heading appears twice THE SYSTEM SHALL report one finding carrying the line of the duplicate.",
+      "WHEN two zone headings appear in the wrong order THE SYSTEM SHALL report one finding naming both."
+    ],
+    "verify": [
+      "python scripts/validate_skill.py --rule zones",
+      "python scripts/validate_skill.py --list-rules | grep -qx zones",
+      "python scripts/validate_skill.py",
+      "python -m compileall -q scripts"
+    ],
+    "checkpoint": "step-04-zones",
+    "files": [
+      "scripts/validate_skill.py"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T5",
+    "title": "Add the links rule",
+    "epic": "01-validator-core",
+    "dependencies": [
+      "E1-T1"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN the `links` rule runs against this repository THE SYSTEM SHALL report zero findings, because both paths under `references/` that the documents mention exist on disk and every in-file anchor link in `references/templates.md` resolves to a heading in that same file.",
+      "WHEN a mentioned path under `references/` does not exist THE SYSTEM SHALL report one finding at the mention's line.",
+      "WHEN an in-file anchor names a slug no heading produces THE SYSTEM SHALL report one finding carrying that slug.",
+      "WHEN a heading contains an em dash THE SYSTEM SHALL compute the same slug GitHub computes — lowercase, drop every character that is not a word character, whitespace or hyphen, then replace each whitespace run with one hyphen — so a correct table-of-contents entry is not reported."
+    ],
+    "verify": [
+      "python scripts/validate_skill.py --rule links",
+      "python scripts/validate_skill.py --list-rules | grep -qx links",
+      "python scripts/validate_skill.py",
+      "python -m compileall -q scripts"
+    ],
+    "checkpoint": "step-05-links",
+    "files": [
+      "scripts/validate_skill.py"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T6",
+    "title": "Add the version-sync rule",
+    "epic": "01-validator-core",
+    "dependencies": [
+      "E1-T1",
+      "E1-T2"
+    ],
+    "priority": "p1",
+    "acceptance": [
+      "WHEN the `version-sync` rule runs against this repository THE SYSTEM SHALL report zero findings, because the frontmatter version rendered in bold Markdown appears in `README.md`.",
+      "WHEN the frontmatter version is bumped and `README.md` is not updated THE SYSTEM SHALL report exactly one finding naming the missing version.",
+      "WHEN the frontmatter block is unparseable THE SYSTEM SHALL report nothing here, leaving that failure to the `frontmatter` rule, so one defect produces one finding."
+    ],
+    "verify": [
+      "python scripts/validate_skill.py --rule version-sync",
+      "python scripts/validate_skill.py --list-rules | grep -qx version-sync",
+      "python scripts/validate_skill.py",
+      "python -m compileall -q scripts"
+    ],
+    "checkpoint": "step-06-version-sync",
+    "files": [
+      "scripts/validate_skill.py"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T1",
+    "title": "Add the encoding rule",
+    "epic": "02-gate-and-ci",
+    "dependencies": [
+      "E1-T1"
+    ],
+    "priority": "p1",
+    "acceptance": [
+      "WHEN the `encoding` rule runs against this repository THE SYSTEM SHALL report zero findings for all four documents.",
+      "WHEN a file carries a byte-order mark THE SYSTEM SHALL report one finding for that file.",
+      "WHEN a file ends with two or more newlines THE SYSTEM SHALL report one finding for that file.",
+      "WHEN a file ends with no newline THE SYSTEM SHALL report one finding for that file.",
+      "WHEN a file contains CRLF line endings and `forbid_crlf` is false in `scripts/validator-config.json` THE SYSTEM SHALL report nothing for it."
+    ],
+    "verify": [
+      "python scripts/validate_skill.py --rule encoding",
+      "python scripts/validate_skill.py --list-rules | grep -qx encoding",
+      "python scripts/validate_skill.py",
+      "test \"$(python scripts/validate_skill.py --list-rules | wc -l | tr -d ' ')\" = 7",
+      "python -m compileall -q scripts"
+    ],
+    "checkpoint": "step-07-encoding",
+    "files": [
+      "scripts/validate_skill.py"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T2",
+    "title": "Add --root and the first three negative fixtures",
+    "epic": "02-gate-and-ci",
+    "dependencies": [
+      "E1-T1",
+      "E1-T2",
+      "E1-T3"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN the validator runs with `--root` pointed at the budgets fixture and that fixture's own config THE SYSTEM SHALL report at least one `budgets` finding and exit 1.",
+      "WHEN it runs the `zones` rule against that same fixture THE SYSTEM SHALL report zero findings and exit 0, proving the fixture isolates one rule.",
+      "WHEN it runs the `frontmatter` rule against the frontmatter fixture THE SYSTEM SHALL report at least one finding and exit 1.",
+      "WHEN it runs the `counts` rule against the counts fixture THE SYSTEM SHALL report exactly one finding — the claim above the stop marker, not the historical one below it — and exit 1.",
+      "WHEN a plain full run of the repository runs after the fixtures are added THE SYSTEM SHALL still exit 0, because `scripts/tests/fixtures` is listed in `exclude_dirs`."
+    ],
+    "verify": [
+      "python scripts/validate_skill.py --root scripts/tests/fixtures/budgets --config scripts/tests/fixtures/budgets/validator-config.json --rule budgets; test $? -eq 1",
+      "python scripts/validate_skill.py --root scripts/tests/fixtures/budgets --rule zones",
+      "python scripts/validate_skill.py --root scripts/tests/fixtures/frontmatter --rule frontmatter; test $? -eq 1",
+      "python scripts/validate_skill.py --root scripts/tests/fixtures/frontmatter --rule counts",
+      "python scripts/validate_skill.py --root scripts/tests/fixtures/counts --rule counts; test $? -eq 1",
+      "python scripts/validate_skill.py --root scripts/tests/fixtures/counts --rule zones",
+      "python scripts/validate_skill.py",
+      "python -m compileall -q scripts"
+    ],
+    "checkpoint": "step-08-fixtures-a",
+    "files": [
+      "scripts/validate_skill.py",
+      "scripts/tests/fixtures/budgets/**",
+      "scripts/tests/fixtures/frontmatter/**",
+      "scripts/tests/fixtures/counts/**"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T3",
+    "title": "Add the remaining four fixtures and --self-test",
+    "epic": "02-gate-and-ci",
+    "dependencies": [
+      "E1-T4",
+      "E1-T5",
+      "E1-T6",
+      "E2-T1",
+      "E2-T2"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `--self-test` runs THE SYSTEM SHALL print one line per fixture directory and exit 0.",
+      "WHEN a fixture stops failing its own rule THE SYSTEM SHALL exit 1 naming that fixture and the rule that went silent.",
+      "WHEN a fixture fails a rule other than its own THE SYSTEM SHALL exit 1 naming the fixture and the unexpected rule.",
+      "WHEN a rule is registered with no fixture directory of the same name THE SYSTEM SHALL exit 1, so a rule added later cannot skip its proof.",
+      "WHEN a plain full run of the repository runs afterwards THE SYSTEM SHALL still exit 0."
+    ],
+    "verify": [
+      "python scripts/validate_skill.py --self-test",
+      "python scripts/validate_skill.py --root scripts/tests/fixtures/zones --rule zones; test $? -eq 1",
+      "python scripts/validate_skill.py --root scripts/tests/fixtures/links --rule links; test $? -eq 1",
+      "python scripts/validate_skill.py --root scripts/tests/fixtures/version-sync --rule version-sync; test $? -eq 1",
+      "python scripts/validate_skill.py --root scripts/tests/fixtures/encoding --rule encoding; test $? -eq 1",
+      "python scripts/validate_skill.py",
+      "python -m compileall -q scripts"
+    ],
+    "checkpoint": "step-09-fixtures-b",
+    "files": [
+      "scripts/validate_skill.py",
+      "scripts/tests/fixtures/zones/**",
+      "scripts/tests/fixtures/links/**",
+      "scripts/tests/fixtures/version-sync/**",
+      "scripts/tests/fixtures/encoding/**"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T4",
+    "title": "Add the json and github output formats",
+    "epic": "02-gate-and-ci",
+    "dependencies": [
+      "E1-T1",
+      "E2-T3"
+    ],
+    "priority": "p1",
+    "acceptance": [
+      "WHEN `--format json` runs on a clean tree THE SYSTEM SHALL print one JSON object whose `findings` is an empty list and whose `exit_code` is 0, and exit 0.",
+      "WHEN `--format json` runs THE SYSTEM SHALL emit the five keys `tool`, `repo_root`, `rules_run`, `findings` and `exit_code`, and nothing else on stdout.",
+      "WHEN `--format json` runs with a single rule selected THE SYSTEM SHALL list only that rule in `rules_run`.",
+      "WHEN `--format github` runs against a fixture that fails THE SYSTEM SHALL print at least one line beginning `::error file=` and exit 1.",
+      "WHEN `--format` is given an unknown value THE SYSTEM SHALL exit 2."
+    ],
+    "verify": [
+      "python scripts/validate_skill.py --format json | python -m json.tool > /dev/null",
+      "python scripts/validate_skill.py --format json | grep -q '\"exit_code\": 0'",
+      "python scripts/validate_skill.py --format json | grep -q '\"findings\": \\[\\]'",
+      "python scripts/validate_skill.py --format json | grep -q '\"tool\": \"validate_skill\"'",
+      "python scripts/validate_skill.py --format json --rule counts | grep -q '\"rules_run\": \\[\"counts\"\\]'",
+      "python scripts/validate_skill.py --root scripts/tests/fixtures/zones --rule zones --format github | grep -q '^::error file='",
+      "python scripts/validate_skill.py --format nope; test $? -eq 2",
+      "python scripts/validate_skill.py --self-test",
+      "python -m compileall -q scripts"
+    ],
+    "checkpoint": "step-10-formats",
+    "files": [
+      "scripts/validate_skill.py"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T5",
+    "title": "Add the blocking GitHub Actions workflow",
+    "epic": "02-gate-and-ci",
+    "dependencies": [
+      "E2-T4"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN the workflow file is parsed by GitHub THE SYSTEM SHALL define exactly one job that runs `python -m compileall -q scripts`, `python -m json.tool scripts/validator-config.json`, `python scripts/validate_skill.py --self-test` and `python scripts/validate_skill.py --format github`, in that order.",
+      "WHEN either action is referenced THE SYSTEM SHALL name it by a 40-character commit SHA, never by a tag or a branch.",
+      "WHEN the workflow declares permissions THE SYSTEM SHALL grant `contents: read` and nothing else.",
+      "WHEN a pull request is opened or a commit lands on `main` THE SYSTEM SHALL be the complete trigger set, with no other event listed.",
+      "WHEN the job exceeds five minutes THE SYSTEM SHALL be cancelled by its own `timeout-minutes`."
+    ],
+    "verify": [
+      "test -f .github/workflows/validate.yml",
+      "grep -q \"actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\" .github/workflows/validate.yml",
+      "grep -q \"actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0\" .github/workflows/validate.yml",
+      "grep -qE \"^ *contents: read\" .github/workflows/validate.yml",
+      "grep -q \"pull_request\" .github/workflows/validate.yml",
+      "grep -qE '^ *python-version: \"3.12\"' .github/workflows/validate.yml",
+      "grep -q \"validate_skill.py --self-test\" .github/workflows/validate.yml",
+      "grep -q \"validate_skill.py --format github\" .github/workflows/validate.yml",
+      "grep -qE \"uses: actions/[a-z-]+@v[0-9]\" .github/workflows/validate.yml; test $? -eq 1",
+      "grep -qE \"packages: write|contents: write|id-token: write\" .github/workflows/validate.yml; test $? -eq 1",
+      "python scripts/validate_skill.py && python scripts/validate_skill.py --self-test"
+    ],
+    "checkpoint": "step-11-workflow",
+    "files": [
+      ".github/workflows/validate.yml"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T6",
+    "title": "Add the pre-commit hook and close the full gate",
+    "epic": "02-gate-and-ci",
+    "dependencies": [
+      "E2-T5"
+    ],
+    "priority": "p1",
+    "acceptance": [
+      "WHEN `sh .githooks/pre-commit` runs on a clean tree THE SYSTEM SHALL exit 0.",
+      "WHEN the hook runs against a tree whose validator reports a finding THE SYSTEM SHALL exit non-zero with the reason on one line, so the commit is aborted.",
+      "WHEN `git config core.hooksPath` is read after this task THE SYSTEM SHALL return `.githooks`.",
+      "WHEN the hook is read THE SYSTEM SHALL contain no reference to `python3`, which resolves to the Windows Store stub rather than an interpreter on the maintainer's machine.",
+      "WHEN the whole gate runs — compile, config parse, self-test, full run, JSON parse, hook, unknown-flag exit code, and a diff of the four upstream documents against HEAD — THE SYSTEM SHALL exit 0 on every line."
+    ],
+    "verify": [
+      "test -x .githooks/pre-commit || test -f .githooks/pre-commit",
+      "sh .githooks/pre-commit",
+      "grep -q \"python3\" .githooks/pre-commit; test $? -eq 1",
+      "git config core.hooksPath .githooks",
+      "test \"$(git config core.hooksPath)\" = \".githooks\"",
+      "python -m compileall -q scripts",
+      "python -m json.tool scripts/validator-config.json > /dev/null",
+      "python scripts/validate_skill.py --self-test",
+      "python scripts/validate_skill.py",
+      "python scripts/validate_skill.py --format json | python -m json.tool > /dev/null",
+      "git diff --quiet HEAD -- SKILL.md README.md LICENSE references"
+    ],
+    "checkpoint": "step-12-hook",
+    "files": [
+      ".githooks/pre-commit"
+    ],
+    "status": "pending"
+  }
+]

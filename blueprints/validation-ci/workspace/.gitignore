@@ -1,0 +1,10 @@
+# Local agent and tool state — never committed.
+.claude-flow/
+.swarm/
+
+# Python bytecode from scripts/validate_skill.py runs.
+__pycache__/
+*.pyc
+
+# Nothing here matches .claude/, .github/, scripts/ or blueprints/ — those are committed
+# on purpose. See blueprint.md section 10, "Files that must be committed".

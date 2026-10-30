@@ -1,0 +1,65 @@
+{
+  "_note": "Configuration for scripts/validate_skill.py. Shipped by the blueprint bundle, not written by a build step. Every files.max_lines value is a ceiling; every counted_at_authoring value was counted from the file on 2026-10-21.",
+  "files": {
+    "SKILL.md": {
+      "max_lines": 520,
+      "counted_at_authoring": 496
+    },
+    "README.md": {
+      "max_lines": 450,
+      "counted_at_authoring": 422
+    },
+    "references/patterns.md": {
+      "max_lines": 110,
+      "counted_at_authoring": 82
+    },
+    "references/templates.md": {
+      "max_lines": 470,
+      "counted_at_authoring": 442
+    }
+  },
+  "exclude_dirs": [
+    "blueprints",
+    ".git",
+    ".github",
+    ".claude",
+    ".claude-flow",
+    ".swarm",
+    "scripts/tests/fixtures",
+    "__pycache__"
+  ],
+  "skill_file": "SKILL.md",
+  "readme_file": "README.md",
+  "required_frontmatter_keys": [
+    "name",
+    "version",
+    "description"
+  ],
+  "expected_name": "prompt-master",
+  "_expected_name_note": "The frontmatter name is compared against this value, not against the directory name, so a fixture tree under scripts/tests/fixtures/<rule>/ does not fail the frontmatter rule merely for living in a differently named directory.",
+  "zones": [
+    "PRIMACY ZONE",
+    "MIDDLE ZONE",
+    "RECENCY ZONE"
+  ],
+  "counts": {
+    "patterns": {
+      "truth_file": "references/patterns.md",
+      "truth_kind": "numbered_table_row"
+    },
+    "templates": {
+      "truth_file": "references/templates.md",
+      "truth_kind": "template_heading"
+    }
+  },
+  "claim_scan_stop_markers": {
+    "README.md": "## ℹ️ Version History"
+  },
+  "encoding": {
+    "require_utf8": true,
+    "forbid_bom": true,
+    "require_single_trailing_newline": true,
+    "forbid_crlf": false,
+    "_crlf_note": "The committed blobs are CRLF (upstream state; core.autocrlf=true locally). Normalising them would edit SKILL.md and README.md, which this change may not touch, so the rule normalises CRLF for analysis instead of failing on it."
+  }
+}
